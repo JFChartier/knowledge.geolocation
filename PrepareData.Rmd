@@ -1,0 +1,56 @@
+---
+title: "PrepareData"
+author: "Jean-Francois Chartier"
+date: "8 mars 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+QM.data=read.csv("QM_data.csv", stringsAsFactors = F)
+QM.data$ID=QM.data$ï..ID
+QM.data$ï..ID=NULL
+QM.data=QM.data[, c(1:8, 11, 22)]
+#saveRDS(QM.data, "QM.data.rds")
+```
+
+```{r}
+subToSuperCat=read.csv("sub to super categories.csv", header = T, fill = T, strip.white = T, stringsAsFactors=F, check.names=F)
+subToSuperCat$ASSESSMENTS=subToSuperCat$`ï»¿ASSESSMENTS`
+subToSuperCat$`ï»¿ASSESSMENTS`=NULL
+```
+
+
+#create super categories
+```{r}
+#by default, set all event categories to NA
+QM.data$CATEGORY=NA
+
+for (i in 1: length(colnames(subToSuperCat))){
+  cat=colnames(subToSuperCat)[i]
+  print(cat)
+  
+  for (j in 1:length(subToSuperCat[,i])){
+    x=subToSuperCat[j,i]
+    if (x!=""){
+      is.in = grepl(x, QM.data$SubCATEGORIES, fixed=F, ignore.case = T)
+      print(sum(is.in))
+      QM.data$CATEGORY[is.in]=cat
+      #is.in
+    }
+  }
+  
+  
+  #QM.data$CATEGORY[is.cat]=cat
+}
+
+```
+```{r}
+saveRDS(QM.data, "QM.data.rds")
+```
+
