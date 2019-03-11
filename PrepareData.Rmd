@@ -12,17 +12,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-QM.data=read.csv("QM_data.csv", stringsAsFactors = F)
-QM.data$ID=QM.data$ï..ID
-QM.data$ï..ID=NULL
+QM.data=read.csv("QM_data.csv", stringsAsFactors = F, encoding = "UTF-8")
+QM.data$ID=QM.data$X.U.FEFF.ID
+QM.data$X.U.FEFF.ID=NULL
 QM.data=QM.data[, c(1:8, 11, 22)]
 #saveRDS(QM.data, "QM.data.rds")
 ```
 
 ```{r}
-subToSuperCat=read.csv("sub to super categories.csv", header = T, fill = T, strip.white = T, stringsAsFactors=F, check.names=F)
-subToSuperCat$ASSESSMENTS=subToSuperCat$`ï»¿ASSESSMENTS`
-subToSuperCat$`ï»¿ASSESSMENTS`=NULL
+subToSuperCat=read.csv("sub to super categories.csv", header = T, fill = T, strip.white = T, stringsAsFactors=F, check.names=F, encoding = "UTF-8")
+#subToSuperCat$ASSESSMENTS=subToSuperCat$`ï»¿ASSESSMENTS`
+#subToSuperCat$`ï»¿ASSESSMENTS`=NULL
 ```
 
 

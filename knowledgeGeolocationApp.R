@@ -10,10 +10,11 @@
 library(shiny)
 library(markdown)
 library(shinythemes)
+library(leaflet)
 ############
 QM.data = readRDS("QM.data.rds")
 
-ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "RegCan", title = "Dashboard RegCan: ",
+ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "Knowledge Geo", title = "Dashboard Knowledge Geo: ",
                
            navbarMenu("About",
                       
@@ -59,15 +60,18 @@ server <- function(input, output, session) {
   library(leaflet)
   library(dplyr)
   library(magrittr)
+  library(scales)
+  #install.packages("scales")
   
   
   #####################################
   #load data
   QM.data = readRDS("QM.data.rds")
   
-  myColors = c("black","blue","red","green","white","gray","orange", "yellow", "ligthblue", "pink")
-  pal <- colorFactor(palette = myColors,
-                     levels = unique(QM.data$CATEGORY))
+  myColors = c("black","blue","red","green","brown","pink","orange", "yellow", "lightblue", "gray")
+  #myColors = topo.colors(10)
+  pal <- leaflet::colorFactor(palette = myColors,
+                              levels = unique(QM.data$CATEGORY))
   
   
   
@@ -76,6 +80,7 @@ server <- function(input, output, session) {
   
   #category render
   category_select1<-reactive({
+      #QM.data
      QM.data %>% filter(CATEGORY %in% input$category) #%>%select(c(1:3))
     })
   
@@ -88,14 +93,16 @@ server <- function(input, output, session) {
         # Use dc_hq to add the hq column as popups
         addCircleMarkers(lng = ~LONGITUDE, 
                          lat = ~LATITUDE, 
-                         #popup = category_select1()$LOCATION, 
-                         radius=1,
+                         popup = category_select1()$LOCATION, 
+                         radius=2,
                          #the fuck is here
-                         color=~pal(CATEGORY),
-                         label=~INCIDENT.TITLE) #%>%
-        #addLegend(position = "bottomright",
-                #pal = pal,
-                #values = unique(QM.data$CATEGORY))
+                         color=~pal(category_select1()$CATEGORY),
+                         label=~INCIDENT.TITLE,
+                         fill=T,
+                         opacity = .9) %>%
+        addLegend(position = "topright",
+                pal = pal,
+                values = unique(category_select1()$CATEGORY))
       map
     })
   

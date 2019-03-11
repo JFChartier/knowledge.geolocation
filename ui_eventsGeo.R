@@ -15,7 +15,7 @@ ui_topic<-fluidPage(
                                label = "Select category:",
                                choices = unique(QM.data$CATEGORY),
                                multiple= T,
-                               selected=QM.data$CATEGORY[1])
+                               selected=QM.data$CATEGORY)
                    
                       
       ),
@@ -23,7 +23,7 @@ ui_topic<-fluidPage(
       # Output(s)
       mainPanel(width = 10,
                 h4("Explore events by category"),
-                leafletOutput(outputId = "eventMap1",height = 1000)
+                leafletOutput(outputId = "eventMap1",height = 500)
       )
     ))
 )
