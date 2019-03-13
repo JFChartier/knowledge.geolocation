@@ -81,7 +81,8 @@ server <- function(input, output, session) {
   #category render
   category_select1<-reactive({
       #QM.data
-     QM.data %>% filter(CATEGORY %in% input$category) #%>%select(c(1:3))
+     #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
+    QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time)) #%>%select(c(1:3))
     })
   
   

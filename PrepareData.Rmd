@@ -11,15 +11,16 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
+#Read QM data
 ```{r}
 QM.data=read.csv("QM_data.csv", stringsAsFactors = F, encoding = "UTF-8")
 QM.data$ID=QM.data$X.U.FEFF.ID
 QM.data$X.U.FEFF.ID=NULL
-QM.data=QM.data[, c(1:8, 11, 22)]
+#=QM.data[, c(1:8, 11, 22)]
 #saveRDS(QM.data, "QM.data.rds")
 ```
 
+#Read event type categories file
 ```{r}
 subToSuperCat=read.csv("sub to super categories.csv", header = T, fill = T, strip.white = T, stringsAsFactors=F, check.names=F, encoding = "UTF-8")
 #subToSuperCat$ASSESSMENTS=subToSuperCat$`ï»¿ASSESSMENTS`
@@ -27,7 +28,8 @@ subToSuperCat=read.csv("sub to super categories.csv", header = T, fill = T, stri
 ```
 
 
-#create super categories
+##create super event type categories
+(deprecated)
 associate one super category to a set of sub-categories
 howerver, there are potentially several super categories to a save event
 ```{r}
@@ -61,7 +63,7 @@ saveRDS(QM.data, "QM.data.rds")
 
 
 
-#create super categories and duplicates events if needed
+##create event type categories and duplicates events if needed
 associate all super category. duplicate events
 ```{r}
 library(magrittr)
@@ -96,4 +98,49 @@ lapply((1:length(colnames(subToSuperCat))), function(i){
 ```{r}
 saveRDS(all.events, "QM.data.rds")
 ```
+
+
+#Read QM
+
+```{r}
+QM.data = readRDS("QM.data.rds")
+```
+
+
+#Read grabularity categorie association file
+```{r}
+loc.to.granu = read.csv("granularity categories.csv", header = T, fill = T, strip.white = T, stringsAsFactors=F, check.names=F, encoding = "UTF-8")
+```
+
+
+##create GRANULARITY categories
+```{r}
+#by default, set all event categories to NA
+QM.data$GRANULARITY=rep("OTHER", nrow(QM.data))
+
+for (i in 1: length(colnames(loc.to.granu))){
+  cat=colnames(loc.to.granu)[i]
+  print(cat)
+  
+  for (j in 1:length(loc.to.granu[,i])){
+    x=loc.to.granu[j,i]
+    print(x)
+    print(length(x))
+    if (x != ""){
+      is.in = grepl(x, QM.data$Location.Accuracy...the.report.is.from.in.this, fixed=F, ignore.case = T)
+      print(sum(is.in))
+      QM.data$GRANULARITY[is.in]=cat
+      #is.in
+    }
+  }
+  
+  
+  #QM.data$CATEGORY[is.cat]=cat
+}
+```
+
+```{r}
+saveRDS(QM.data, "QM.data.rds")
+```
+
 
