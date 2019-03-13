@@ -11,6 +11,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
 ```{r}
 QM.data=read.csv("QM_data.csv", stringsAsFactors = F, encoding = "UTF-8")
 QM.data$ID=QM.data$X.U.FEFF.ID
@@ -27,6 +28,8 @@ subToSuperCat=read.csv("sub to super categories.csv", header = T, fill = T, stri
 
 
 #create super categories
+associate one super category to a set of sub-categories
+howerver, there are potentially several super categories to a save event
 ```{r}
 #by default, set all event categories to NA
 QM.data$CATEGORY=NA
@@ -50,7 +53,47 @@ for (i in 1: length(colnames(subToSuperCat))){
 }
 
 ```
+
+
 ```{r}
 saveRDS(QM.data, "QM.data.rds")
+```
+
+
+
+#create super categories and duplicates events if needed
+associate all super category. duplicate events
+```{r}
+library(magrittr)
+#by default, set all event categories to NA
+#QM.data$CATEGORY=NA
+
+lapply((1:length(colnames(subToSuperCat))), function(i){
+  super.cat=colnames(subToSuperCat)[i]
+  print(super.cat)
+  
+  
+  lapply(subToSuperCat[,i], function(sub.cat) {
+    
+    if (sub.cat!=""){
+      is.in = grepl(sub.cat, QM.data$SubCATEGORIES, fixed=F, ignore.case = T)
+      #print(sum(is.in))
+      x=QM.data[is.in,]
+      x%>%set_colnames(colnames(subToSuperCat))
+      x
+      #colnames(QM.data[is.in,])=colnames(subToSuperCat)
+      #QM.data$CATEGORY[is.in]=super.cat
+      #is.in
+    }
+  }) %>%data.table::rbindlist() -> events.of.super.cat
+  print(nrow(events.of.super.cat))
+  events.of.super.cat$CATEGORY=rep(super.cat, nrow(events.of.super.cat))
+  events.of.super.cat
+})%>%data.table::rbindlist() -> all.events
+
+```
+
+```{r}
+saveRDS(all.events, "QM.data.rds")
 ```
 
