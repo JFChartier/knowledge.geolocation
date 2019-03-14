@@ -12,7 +12,8 @@ library(markdown)
 library(shinythemes)
 library(leaflet)
 ############
-QM.data = readRDS("QM.data.rds")
+#QM.data = readRDS("QM.data.rds")
+all.data=readRDS("all.data.rds")
 
 ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "Knowledge Geo", title = "Dashboard Knowledge Geo: ",
                
@@ -31,14 +32,14 @@ ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "Knowledge G
            
            tabPanel("Event geolocations",
                     source("ui_eventsGeo.R", local = T, encoding = 'UTF-8')$value
-           ),
+           )#,
            
-           tabPanel("Knowledge geolocation"#,
+           #tabPanel("Knowledge geolocation"#,
                     #source("ui_knowledgeGeo.R", local = T, encoding = 'UTF-8')$value
-           ),
-           tabPanel("Knowledge change"#,
+           #),
+           #tabPanel("Knowledge change"#,
                     #source("ui_knowledgeChange.R", local = T, encoding = 'UTF-8')$value
-           )
+           #)
            
 )
 
@@ -66,12 +67,14 @@ server <- function(input, output, session) {
   
   #####################################
   #load data
-  QM.data = readRDS("QM.data.rds")
+  #all.data = readRDS("QM.data.rds")
+  
+  
   
   myColors = c("black","blue","red","green","brown","pink","orange", "yellow", "lightblue", "gray")
   #myColors = topo.colors(10)
   pal <- leaflet::colorFactor(palette = myColors,
-                              levels = unique(QM.data$CATEGORY))
+                              levels = unique(all.data$CATEGORY))
   
   
   
@@ -82,7 +85,7 @@ server <- function(input, output, session) {
   category_select1<-reactive({
       #QM.data
      #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
-    QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time)) #%>%select(c(1:3))
+    all.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
     })
   
   
@@ -94,14 +97,15 @@ server <- function(input, output, session) {
         # Use dc_hq to add the hq column as popups
         addCircleMarkers(lng = ~LONGITUDE, 
                          lat = ~LATITUDE, 
-                         popup = category_select1()$LOCATION, 
+                         popup = category_select1()$DESCRIPTION, 
                          radius=2,
-                         #the fuck is here
                          color=~pal(category_select1()$CATEGORY),
                          label=~INCIDENT.TITLE,
                          fill=T,
-                         opacity = .9) %>%
-        addLegend(position = "topright",
+                         opacity = .9,
+                         popupOptions=c(maxWidth = 400, minWidth = 50, maxHeight = 300,
+                                      autoPan = TRUE, keepInView = FALSE, closeButton = TRUE)) %>%
+        addLegend(position = "bottomright",
                 pal = pal,
                 values = unique(category_select1()$CATEGORY))
       map

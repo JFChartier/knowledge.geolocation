@@ -58,7 +58,7 @@ for (i in 1: length(colnames(subToSuperCat))){
 
 
 ```{r}
-saveRDS(QM.data, "QM.data.rds")
+#saveRDS(QM.data, "QM.data.rds")
 ```
 
 
@@ -101,7 +101,6 @@ saveRDS(all.events, "QM.data.rds")
 
 
 #Read QM
-
 ```{r}
 QM.data = readRDS("QM.data.rds")
 ```
@@ -141,6 +140,80 @@ for (i in 1: length(colnames(loc.to.granu))){
 
 ```{r}
 saveRDS(QM.data, "QM.data.rds")
+```
+
+#Read QM
+```{r}
+QM.data = readRDS("QM.data.rds")
+```
+
+##add corpus
+```{r}
+QM.data$organization=rep("Quake Map", nrow(QM.data))
+```
+
+##select colomns
+```{r}
+QM.data=QM.data[, c(1:4, 6:8, 11, 22:23)]
+saveRDS(QM.data, "QM.data.rds")
+```
+
+
+#Read MSF data
+```{r}
+MSF.data=readRDS("MSF.data.rds")
+
+```
+
+
+##add corpus
+```{r}
+MSF.data$organization=rep("Doctors Without Borders", nrow(MSF.data))
+```
+
+##select colomns
+```{r}
+MSF.data=MSF.data[, c(2:4, 6,12, 14, 32:34)]
+
+```
+
+##uniformize colomn names
+```{r}
+MSF.data$CATEGORY=MSF.data$CATEGORY.1
+MSF.data$CATEGORY.1=NULL
+#encode date
+date=strptime(as.character(MSF.data$DATE), "%d-%m-%Y")
+date=format(date, "%Y-%m-%d")
+MSF.data$INCIDENT.DATE=date
+MSF.data$DATE=NULL
+
+#encode coord
+MSF.data$INCIDENT.TITLE=rep(NA, nrow(MSF.data))
+MSF.data$LATITUDE=as.numeric(as.character(MSF.data$LATITUDE))
+MSF.data$LONGITUDE=as.numeric(as.character(MSF.data$LONGITUDE))
+
+#encode category
+MSF.data$CATEGORY=tolower(MSF.data$CATEGORY)
+MSF.data$CATEGORY[MSF.data$CATEGORY=="medical (needs/info facilities/interventions)"]="MEDICAL"
+MSF.data$CATEGORY[MSF.data$CATEGORY=="relief needs (shelter/food/water)"]="RELIEF NEEDS"
+MSF.data$CATEGORY[MSF.data$CATEGORY=="distribution (shelter/food/water)"]="DISTRIBUTION"
+MSF.data$CATEGORY=toupper(MSF.data$CATEGORY)
+
+#encode granularity
+MSF.data$GRANULARITY=toupper(MSF.data$GRANULARITY)
+MSF.data$GRANULARITY[MSF.data$GRANULARITY==toupper("Ward/exact loc")]="WARD/EXACT LOCATION"
+
+```
+
+
+
+#Bind 2 data set
+```{r}
+all.data=rbind(QM.data, MSF.data, stringsAsFactors=F)
+```
+##save
+```{r}
+saveRDS(all.data, "all.data.rds")
 ```
 
 
