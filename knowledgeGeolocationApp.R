@@ -13,7 +13,14 @@ library(shinythemes)
 library(leaflet)
 ############
 #QM.data = readRDS("QM.data.rds")
+source("functionsForGeoKnowledgeApp.R", local = T)
 all.data=readRDS("all.data.rds")
+
+mySVD=readRDS("2Orgs_approxReducedMatrix-2019-04-03.rds")
+latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) %>% normRowVectors()
+
+
+
 
 ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "Knowledge Geo", title = "Dashboard Knowledge Geo: ",
                
@@ -62,13 +69,6 @@ server <- function(input, output, session) {
   library(dplyr)
   library(magrittr)
   library(scales)
-  #install.packages("scales")
-  
-  
-  #####################################
-  #load data
-  #all.data = readRDS("QM.data.rds")
-  
   
   
   myColors = c("black","blue","red","green","brown","pink","orange", "yellow", "lightblue", "gray")
@@ -77,17 +77,59 @@ server <- function(input, output, session) {
                               levels = unique(all.data$CATEGORY))
   
   
-  
   ########################################
   #render event geolocation
   
+  #query_select<-reactive({
+    #print(input$query)
+    #input$query
+    
+  #})
+  
+  # Creating reactive Values:
+  relevantSegments <- reactiveValues()
+  #initialize as if all segment were perfectly similar to the query
+  relevantSegments$similWithQuery=rep(1, nrow(all.data))
+  
+  
+  #create eventReactive
+  #similarityWithQuery<-eventReactive(input$button, ignoreNULL=F, valueExpr = {
+  observeEvent(input$button, {
+    print(str(input$query))
+    #similarityWithQuery1<-reactive({
+    cat("inside similarityWithQuery")
+    print("inside similarityWithQuery")
+    
+    queryVector=buildQuery(queryTokens = input$query, mySVD = mySVD)
+    
+    #calculate similarity between query vector and segment vectors
+    withProgress(message = 'searching...', value = .1, {
+      latentSimilarityWithQuery=proxy::simil(x=queryVector, y = latentNormedDocSpace, by_rows=T, method=dotProduct, convert_distances = FALSE)
+      
+    })
+    
+    n=sum(latentSimilarityWithQuery>relavanceMin())
+    print(c("number of relevant documents: ", n))
+    
+    
+    relevantSegments$similWithQuery=latentSimilarityWithQuery[1,]   
+  })
+  
+  relavanceMin<-reactive({input$minima})
+  
   #category render
   category_select1<-reactive({
-      #QM.data
-     #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
-    all.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
-    })
+    #QM.data
+    #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
+    all.data[relevantSegments$similWithQuery>=relavanceMin(),] %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
+    
+  })
   
+  ##test
+  #output$query <- renderText({
+    #str(input$query)
+    #input$query
+  #})
   
   output$eventMap1 <- renderLeaflet(
     {
@@ -110,6 +152,17 @@ server <- function(input, output, session) {
                 values = unique(category_select1()$CATEGORY))
       map
     })
+  
+  # Create data table of relevant events
+  output$relevantEvents <- DT::renderDataTable({
+    idDoc=relevantSegments$similWithQuery>=relavanceMin()
+    x=cbind(all.data[idDoc, c(2,4,5,8,9)], "relevance"=relevantSegments$similWithQuery[idDoc])
+    x=x[order(x$relevance, decreasing = T),]
+    #idDoc = order(relevantSegments$similWithQuery>=relavanceMin(), decreasing = T)
+    DT::datatable(data = x, 
+                  options = list(pageLength = 5), 
+                  rownames = FALSE, escape = F)
+  })
   
   
 }

@@ -28,9 +28,12 @@ ui_topic<-fluidPage(
                    #HTML("Select topics"),
                    selectInput(inputId = "query",
                                label = "Keyword(s) in event description:",
-                               choices = NULL, # a vector containing all available keywords
+                               choices = mySVD$original.features, # a vector containing all available keywords
                                multiple= T),
                    
+                   # Action button to show
+                   actionButton(inputId = "button", 
+                                label = ("Run Search")),
                    # Set minimal Threshold
                    sliderInput(inputId = "minima", 
                                label = "Relevance threshold slider:", 
@@ -54,8 +57,16 @@ ui_topic<-fluidPage(
                 tabsetPanel(
                   #tabPanel(title="Summary"
                   #),
+                   
                   tabPanel(title="Map of Events",
-                           leafletOutput(outputId = "eventMap1",height = 500)
+                           #textOutput("query"),
+                           leafletOutput(outputId = "eventMap1",height = 500),
+                           # Show data table
+                           br(),br(),
+                           HTML("<h3><b>Seleted events</b></h3>"),
+                           br(),br(),
+                           DT::dataTableOutput(outputId = "relevantEvents"),
+                           br()
                   ),
                   tabPanel(title="Selected Event Analysis"
                            

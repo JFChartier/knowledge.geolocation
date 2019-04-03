@@ -216,4 +216,17 @@ all.data=rbind(QM.data, MSF.data, stringsAsFactors=F)
 saveRDS(all.data, "all.data.rds")
 ```
 
+#Encode in utf8
+```{r}
+all.data=readRDS("all.data.rds", encoding="UTF-8")
+
+library(stringi)
+
+new.gran=stringi::stri_replace_all(all.data$GRANULARITY, "<U+FEFF>", fixed = T) 
+
+all.data$GRANULARITY=new.gran
+
+saveRDS(all.data, "all.data.rds")
+```
+
 
