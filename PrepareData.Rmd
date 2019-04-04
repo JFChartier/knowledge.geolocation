@@ -89,6 +89,7 @@ lapply((1:length(colnames(subToSuperCat))), function(i){
     }
   }) %>%data.table::rbindlist() -> events.of.super.cat
   print(nrow(events.of.super.cat))
+  
   events.of.super.cat$CATEGORY=rep(super.cat, nrow(events.of.super.cat))
   events.of.super.cat
 })%>%data.table::rbindlist() -> all.events
@@ -218,7 +219,7 @@ saveRDS(all.data, "all.data.rds")
 
 #Encode in utf8
 ```{r}
-all.data=readRDS("all.data.rds", encoding="UTF-8")
+all.data=readRDS("all.data.rds")
 
 library(stringi)
 
@@ -229,4 +230,32 @@ all.data$GRANULARITY=new.gran
 saveRDS(all.data, "all.data.rds")
 ```
 
+#delete duplicat event
+after categorizing events in super categories, a lot of duplicates are created. We need to delete them and keep only unique row
+```{r}
+all.data=readRDS("all.data.rds")
+all.data=unique(all.data)
+saveRDS(all.data, "all.unique.data.rds")
+
+```
+
+#strip white space
+```{r}
+all.data=readRDS("all.unique.data.rds")
+all.data$GRANULARITY=trimws(all.data$GRANULARITY)
+saveRDS(all.data, "all.unique.data.rds")
+
+```
+
+#paste date with event description
+```{r}
+all.data=readRDS("all.unique.data.rds")
+
+new.description=sapply((1: nrow(all.data)), function(i){
+  paste(all.data$INCIDENT.DATE[i], all.data$DESCRIPTION[i], sep = " ")
+})
+
+all.data$DESCRIPTION=new.description
+saveRDS(all.data, "all.unique.data.rds")
+```
 

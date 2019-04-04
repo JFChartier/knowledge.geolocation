@@ -14,7 +14,7 @@ library(leaflet)
 ############
 #QM.data = readRDS("QM.data.rds")
 source("functionsForGeoKnowledgeApp.R", local = T)
-all.data=readRDS("all.data.rds")
+all.data=readRDS("all.unique.data.rds")
 
 mySVD=readRDS("2Orgs_approxReducedMatrix-2019-04-03.rds")
 latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) %>% normRowVectors()
@@ -123,7 +123,7 @@ server <- function(input, output, session) {
     #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
     i=relevantSegments$relevance>=relavanceMin()
     x=all.data[i,]
-    x$relevance=relevantSegments$relevance[i]
+    x$RELEVANCE=relevantSegments$relevance[i]
     x=x %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
     #x$relevance=relevantSegments$relevance[i]
     x
@@ -158,14 +158,24 @@ server <- function(input, output, session) {
     })
   
   # Create data table of relevant events
-  output$relevantEvents <- DT::renderDataTable({
+  output$relevantEvents <- DT::renderDataTable(server = F, {
     #idDoc=relevantSegments$similWithQuery>=relavanceMin()
     #x=cbind(all.data[idDoc, c(2,4,5,8,9)], "relevance"=relevantSegments$similWithQuery[idDoc])
-    x=category_select1()[,c(2,4,5,8,9,11)]
+    
+    x=category_select1()[order(category_select1()$RELEVANCE, decreasing = T),c(2,4,5,8,10,11)]
+    colnames(x)=toupper(colnames(x))
+    
     #idDoc = order(relevantSegments$similWithQuery>=relavanceMin(), decreasing = T)
     DT::datatable(data = x, 
-                  options = list(pageLength = 5), 
-                  rownames = FALSE, escape = F)
+                  rownames = FALSE,
+                  escape = F,
+                  extensions="Buttons",
+                  options = list(dom = 'Bfrtip',
+                                 buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                                 #scrollY = 300,
+                                 #scroller = TRUE,
+                                 pageLength = 5)
+    )
   })
   
   
