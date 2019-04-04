@@ -89,7 +89,7 @@ server <- function(input, output, session) {
   # Creating reactive Values:
   relevantSegments <- reactiveValues()
   #initialize as if all segment were perfectly similar to the query
-  relevantSegments$similWithQuery=rep(1, nrow(all.data))
+  relevantSegments$relevance=rep(1, nrow(all.data))
   
   
   #create eventReactive
@@ -112,7 +112,7 @@ server <- function(input, output, session) {
     print(c("number of relevant documents: ", n))
     
     
-    relevantSegments$similWithQuery=latentSimilarityWithQuery[1,]   
+    relevantSegments$relevance=latentSimilarityWithQuery[1,]   
   })
   
   relavanceMin<-reactive({input$minima})
@@ -121,8 +121,12 @@ server <- function(input, output, session) {
   category_select1<-reactive({
     #QM.data
     #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
-    all.data[relevantSegments$similWithQuery>=relavanceMin(),] %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
-    
+    i=relevantSegments$relevance>=relavanceMin()
+    x=all.data[i,]
+    x$relevance=relevantSegments$relevance[i]
+    x=x %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
+    #x$relevance=relevantSegments$relevance[i]
+    x
   })
   
   ##test
@@ -155,9 +159,9 @@ server <- function(input, output, session) {
   
   # Create data table of relevant events
   output$relevantEvents <- DT::renderDataTable({
-    idDoc=relevantSegments$similWithQuery>=relavanceMin()
-    x=cbind(all.data[idDoc, c(2,4,5,8,9)], "relevance"=relevantSegments$similWithQuery[idDoc])
-    x=x[order(x$relevance, decreasing = T),]
+    #idDoc=relevantSegments$similWithQuery>=relavanceMin()
+    #x=cbind(all.data[idDoc, c(2,4,5,8,9)], "relevance"=relevantSegments$similWithQuery[idDoc])
+    x=category_select1()[,c(2,4,5,8,9,11)]
     #idDoc = order(relevantSegments$similWithQuery>=relavanceMin(), decreasing = T)
     DT::datatable(data = x, 
                   options = list(pageLength = 5), 
