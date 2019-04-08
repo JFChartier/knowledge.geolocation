@@ -1,0 +1,199 @@
+---
+title: "PreprocessingText"
+author: "Jean-Francois Chartier"
+date: "3 avril 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Install packages
+```{r, cache=T}
+if ("quanteda" %in% installed.packages()==FALSE)
+  {
+    install.packages('quanteda',dependencies = TRUE)
+  }
+
+library(quanteda)
+#fixe le nombre de processeurs utilises
+quanteda::quanteda_options("threads" = 7)
+
+
+if ("Matrix" %in% installed.packages()==FALSE)
+  {
+    install.packages('Matrix',dependencies = TRUE)
+  }
+
+library(Matrix)
+
+
+
+if ("stringr" %in% installed.packages()==FALSE)
+  {
+    install.packages('stringr',dependencies = TRUE)
+  }
+
+library(stringr)
+if ("irlba" %in% installed.packages()==FALSE)
+{
+  install.packages('irlba',dependencies = TRUE)
+}
+library(irlba)
+if ("textstem" %in% installed.packages()==FALSE)
+{
+  install.packages('textstem',dependencies = TRUE)
+}
+library(textstem)
+
+
+
+```
+
+#Load Data
+```{r ,cache=T}
+all.data=readRDS("all.unique.data.rds")
+
+description.text=all.data$DESCRIPTION
+```
+
+
+
+##encode into utf8
+to encode in utf-8, a workaround solution is to save into csv with encoding and read the data again with encoding utf8
+
+**** well, nothing works
+```{r,cache=T}
+write.csv(description.text, file = "description.text.csv", fileEncoding = "UTF-8")
+
+description.text=read.csv("description.text.csv", header = F, stringsAsFactors = F, strip.white = T, flush = T, encoding = "UTF-8")
+
+#somehow read.csv add a line and a column when reading the file
+description.text=description.text[2:nrow(description.text), 2]
+
+
+for (i in 1:length(description.text)) 
+  Encoding(description.text[i]) <- "UTF-8"
+
+description.text=sapply(description.text, function(x) {
+  Encoding(x) <- "UTF-8"
+})
+
+```
+
+
+
+#Cleaning 
+```{r ,cache=T}
+
+#remove break line
+preprocesCorpus=stringr::str_replace_all(description.text,"[\r\n]" , "")
+
+preprocesCorpus=stringr::str_replace_all(description.text, fixed("\\n", ignore_case = FALSE), " ")
+
+#remove hyphens
+preprocesCorpus=stringr::str_replace_all(preprocesCorpus,"-", "")
+
+#remove all non graphical caracther
+preprocesCorpus=stringr::str_replace_all(preprocesCorpus,"[^[:graph:]]", " ")
+
+#preprocesCorpus=stringr::str_replace_all(preprocesCorpus,"\t", " ")
+
+preprocesCorpus=stringr::str_squish(preprocesCorpus)
+
+```
+
+##replace description text
+```{r}
+all.data$DESCRIPTION=preprocesCorpus
+saveRDS(all.data, "all.unique.data.rds")
+
+```
+
+
+#preprocessing 
+```{r}
+
+# tokenization with quanteda
+preprocesCorpus=quanteda::tokens(x=preprocesCorpus,what="word", remove_punct = TRUE, remove_numbers = TRUE, remove_separators = TRUE,remove_hyphens = TRUE, remove_symbols=TRUE, remove_url = TRUE)
+
+preprocesCorpus=quanteda::tokens_tolower(preprocesCorpus)
+
+#myStopWords=unique(c(stopwords("en", source = "smart"), c("yes", "no", "thing", "can", "okay", "ok", "just", "good", "like", "something", "one", "moment", "say", "go", "speeches", "pages", "online", "default.aspx", "www.bankofengland.co.uk")))
+
+myStopWords=unique(c(stopwords("en", source = "smart")))
+
+# filtrer selon un antidictionnaire et singleton
+preprocesCorpus=quanteda::tokens_remove(preprocesCorpus, case_insensitive = F, valuetype = "glob", pattern=myStopWords, min_nchar=3)
+
+#lemmatization
+preprocesCorpus=sapply(preprocesCorpus, FUN = function(seg)  paste0(textstem::lemmatize_words(seg), collapse = " "))
+preprocesCorpus=quanteda::tokens(preprocesCorpus)
+
+#apply again stopwords after lemmatization
+preprocesCorpus = quanteda::tokens_remove(preprocesCorpus, case_insensitive = TRUE, valuetype = "glob", pattern=myStopWords)
+
+print(c("corpus size after preprocessing : " , length(paste(unlist(preprocesCorpus)))))
+
+print(c("vocabulary size after preprocessing : ", length(unique(paste(unlist(preprocesCorpus))) )))
+
+```
+
+
+##Extract ngrams of words
+```{r,cache=T}
+#preprocesCorpus2=quanteda::tokens(preprocesCorpus, ngrams=1:2)
+```
+
+#Find and filter rare words
+```{r}
+m=quanteda::nfeat(dfm(x=preprocesCorpus, tolower=FALSE))
+wordDocFreq=quanteda::dfm(x=preprocesCorpus, tolower=FALSE) %>% topfeatures(., n=m, decreasing = FALSE, scheme="docfreq")
+
+wordsTooRare=wordDocFreq[wordDocFreq<2]
+
+
+wordsTooFrequent=wordDocFreq[wordDocFreq>(length(preprocesCorpus)*1)]
+
+wordsToFilter=c(wordsTooRare, wordsTooFrequent)
+
+preprocesCorpus3=quanteda::tokens_remove(preprocesCorpus, case_insensitive = F, valuetype = "glob", pattern=names(wordsToFilter))
+
+```
+
+
+#save preprocessed data
+```{r}
+saveRDS(preprocesCorpus3, "2Orgs_preProText-2019-04-03.rds")
+
+```
+
+#Modeling documents
+```{r ,cache=T}
+#Vectorize documents 
+myMatrix = quanteda::dfm(x=preprocesCorpus3, tolower=FALSE)
+
+saveRDS(myMatrix, "2Orgs_sparseMatrix-2019-04-03.rds")
+
+# imprimer nombre de dimensions de la matrice
+#print(paste("nombre de mots differents apres filtrage base sur la frequence documentaire : ", length(myMatrix@Dimnames$features)))
+
+```
+
+
+#SVD 400 with irlba
+approximate the SVD, but it is faster than computing an exact SVD
+```{r}
+myMatrix=dfm_weight(x=myMatrix, scheme="prop")
+set.seed(1)
+mySVD=irlba::irlba(myMatrix, 200, tol=1e-5)
+mySVD$original.features=myMatrix@Dimnames$features
+saveRDS(mySVD, file = "2Orgs_approxReducedMatrix-2019-04-03.rds")
+
+```
+
+
+

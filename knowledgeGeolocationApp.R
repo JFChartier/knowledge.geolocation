@@ -23,23 +23,22 @@ latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) %>% normRow
 
 
 ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "Knowledge Geo", title = "Dashboard Knowledge Geo: ",
+               tabPanel("Event geolocations",
+                        source("ui_eventsGeo.R", local = T, encoding = 'UTF-8')$value
+               ),
                
-           navbarMenu("About",
-                      
-                      tabPanel(title = "Project",
-                               source("ui_project.R", local = T, encoding = 'UTF-8')$value
-                      ),
-                      tabPanel("Team",
-                               source("ui_team.R", local = T, encoding = 'UTF-8')$value
-                      ),
-                      tabPanel("Contact",
-                               source("ui_contact.R", local = T, encoding = 'UTF-8')$value
-                      )
-           ),
-           
-           tabPanel("Event geolocations",
-                    source("ui_eventsGeo.R", local = T, encoding = 'UTF-8')$value
-           )#,
+               navbarMenu("About",
+                          
+                          tabPanel(title = "Project",
+                                   source("ui_project.R", local = T, encoding = 'UTF-8')$value
+                          ),
+                          tabPanel("Team",
+                                   source("ui_team.R", local = T, encoding = 'UTF-8')$value
+                          ),
+                          tabPanel("Contact",
+                                   source("ui_contact.R", local = T, encoding = 'UTF-8')$value
+                          )
+               )
            
            #tabPanel("Knowledge geolocation"#,
                     #source("ui_knowledgeGeo.R", local = T, encoding = 'UTF-8')$value
@@ -95,24 +94,32 @@ server <- function(input, output, session) {
   #create eventReactive
   #similarityWithQuery<-eventReactive(input$button, ignoreNULL=F, valueExpr = {
   observeEvent(input$button, {
-    print(str(input$query))
-    #similarityWithQuery1<-reactive({
-    cat("inside similarityWithQuery")
-    print("inside similarityWithQuery")
-    
-    queryVector=buildQuery(queryTokens = input$query, mySVD = mySVD)
-    
-    #calculate similarity between query vector and segment vectors
-    withProgress(message = 'searching...', value = .1, {
-      latentSimilarityWithQuery=proxy::simil(x=queryVector, y = latentNormedDocSpace, by_rows=T, method=dotProduct, convert_distances = FALSE)
+    #initialize as if all segment were perfectly similar to the query
+    relevantSegments$relevance=rep(1, nrow(all.data))
+    print(paste("input: ", input$query))
+    str(input$query)
+    if(is.null(input$query)==F){
+      #print(str(input$query))
+      #similarityWithQuery1<-reactive({
+      #cat("inside similarityWithQuery")
+      print("inside similarityWithQuery")
       
-    })
+      queryVector=buildQuery(queryTokens = input$query, mySVD = mySVD)
+      
+      #calculate similarity between query vector and segment vectors
+      withProgress(message = 'searching...', value = .1, {
+        latentSimilarityWithQuery=proxy::simil(x=queryVector, y = latentNormedDocSpace, by_rows=T, method=dotProduct, convert_distances = FALSE)
+        
+      })
+      
+      n=sum(latentSimilarityWithQuery>=relavanceMin())
+      print(c("number of relevant documents: ", n))
+      relevantSegments$relevance=latentSimilarityWithQuery[1,]  
+      
+    }
     
-    n=sum(latentSimilarityWithQuery>relavanceMin())
-    print(c("number of relevant documents: ", n))
     
-    
-    relevantSegments$relevance=latentSimilarityWithQuery[1,]   
+     
   })
   
   relavanceMin<-reactive({input$minima})
@@ -122,10 +129,12 @@ server <- function(input, output, session) {
     #QM.data
     #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
     i=relevantSegments$relevance>=relavanceMin()
+    print(paste0(sum(i), " number de relevant doc from ", length(relevantSegments$relevance)))
     x=all.data[i,]
     x$RELEVANCE=relevantSegments$relevance[i]
     x=x %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
-    #x$relevance=relevantSegments$relevance[i]
+    #initialize again all segments as perfectly similar to the query
+    #relevantSegments$relevance=rep(1, nrow(all.data))
     x
   })
   
@@ -138,19 +147,22 @@ server <- function(input, output, session) {
   output$eventMap1 <- renderLeaflet(
     {
       map <- category_select1()%>%
-        leaflet() %>%
+        leaflet(options = leafletOptions(
+          # Set minZoom and dragging 
+          dragging = T)) %>%
         addProviderTiles("CartoDB") %>%
         # Use dc_hq to add the hq column as popups
-        addCircleMarkers(lng = ~LONGITUDE, 
-                         lat = ~LATITUDE, 
+        addCircleMarkers(lng = ~jitter(LONGITUDE, amount = 0.0005), #jitter
+                         lat = ~jitter(LATITUDE, amount=0.0005), #jitter
                          popup = category_select1()$DESCRIPTION, 
-                         radius=2,
+                         radius=~((normVector(category_select1()$RELEVANCE)+1)**6)*2, #(((RELEVANCE+1)**4)/2),
                          color=~pal(category_select1()$CATEGORY),
                          label=~INCIDENT.TITLE,
                          fill=T,
-                         opacity = .9,
+                         opacity = .8,
+                         #clusterOptions = markerClusterOptions(),
                          popupOptions=c(maxWidth = 400, minWidth = 50, maxHeight = 300,
-                                      autoPan = TRUE, keepInView = FALSE, closeButton = TRUE)) %>%
+                                      autoPan = TRUE, keepInView = F, closeButton = TRUE)) %>%
         addLegend(position = "bottomright",
                 pal = pal,
                 values = unique(category_select1()$CATEGORY))
@@ -164,6 +176,8 @@ server <- function(input, output, session) {
     
     x=category_select1()[order(category_select1()$RELEVANCE, decreasing = T),c(2,4,5,8,10,11)]
     colnames(x)=toupper(colnames(x))
+    
+    x$RELEVANCE=round(x$RELEVANCE, 3)
     
     #idDoc = order(relevantSegments$similWithQuery>=relavanceMin(), decreasing = T)
     DT::datatable(data = x, 

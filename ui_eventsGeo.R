@@ -4,7 +4,7 @@ ui_topic<-fluidPage(
   sidebarLayout(
   
       # Input(s)
-      sidebarPanel(width = 2,
+      sidebarPanel(width = 3,
                    
                    # Text instructions
                    #HTML("Select topics"),
@@ -39,13 +39,22 @@ ui_topic<-fluidPage(
                    sliderInput(inputId = "minima", 
                                label = "Relevance threshold slider:", 
                                min = 0, max = 1, 
-                               value = 0.1, step = 0.05)#,
+                               value = 0, step = 0.05),
+                   sliderInput(inputId = "time",
+                               label = "Time slider:",
+                               min=min(as.Date(all.data$INCIDENT.DATE)),
+                               max=max(as.Date(all.data$INCIDENT.DATE)),
+                               value = max(as.Date(all.data$INCIDENT.DATE)),
+                               #value = c(min(as.Date(QM.data$INCIDENT.DATE)), max(as.Date(QM.data$INCIDENT.DATE))),
+                               step = 1,
+                               animate=TRUE,
+                               width="100%")
                    #br(), br(),
                    
       ),
       
       # Output(s)
-      mainPanel(width = 10,
+      mainPanel(width = 9,
                 tabsetPanel(
                   #tabPanel(title="Summary"
                   #),
@@ -53,18 +62,10 @@ ui_topic<-fluidPage(
                   tabPanel(title="Map of Selected Events",
                            #HTML("<h4><b>Map of selected events</b></h3>"),
                            #textOutput("query"),
-                           leafletOutput(outputId = "eventMap1",height = 500),
+                           leafletOutput(outputId = "eventMap1",height = 500)
                            # Show data table
-                           br(),
-                           sliderInput(inputId = "time",
-                                       label = "Time slider:",
-                                       min=min(as.Date(all.data$INCIDENT.DATE)),
-                                       max=max(as.Date(all.data$INCIDENT.DATE)),
-                                       value = max(as.Date(all.data$INCIDENT.DATE)),
-                                       #value = c(min(as.Date(QM.data$INCIDENT.DATE)), max(as.Date(QM.data$INCIDENT.DATE))),
-                                       step = 1,
-                                       animate=TRUE,
-                                       width="100%")#,
+                           #br(),
+                           
                            #br(),
                            #HTML("<h4><b>Table of seleted events</b></h3>"),
                            #DT::dataTableOutput(outputId = "relevantEvents"),

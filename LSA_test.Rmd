@@ -1,0 +1,44 @@
+---
+title: "LSA_test"
+author: "Jean-Francois Chartier"
+date: "8 avril 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source("functionsForGeoKnowledgeApp.R", local = T)
+all.data=readRDS("all.unique.data.rds")
+
+mySVD=readRDS("2Orgs_approxReducedMatrix-2019-04-03.rds")
+latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) %>% normRowVectors()
+
+```
+
+```{r}
+query=c("woman", "security")
+queryVector=buildQuery(query = query, mySVD = mySVD)
+str(queryVector)
+```
+
+
+```{r}
+latentSimilarityWithQuery=proxy::simil(x=queryVector, y = latentNormedDocSpace, by_rows=T, method=dotProduct, convert_distances = FALSE)
+```
+
+```{r}
+all.data$relavance=latentSimilarityWithQuery
+x=all.data[order(latentSimilarityWithQuery, decreasing = T),c(2,4,5,8,10,11)]
+    
+```
+
+```{r}
+View(x)
+```
+
+
