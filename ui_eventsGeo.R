@@ -59,10 +59,10 @@ ui_topic<-fluidPage(
                   #tabPanel(title="Summary"
                   #),
                    
-                  tabPanel(title="Map of Selected Events",
+                  tabPanel(title="Map of Selected Reports",
                            #HTML("<h4><b>Map of selected events</b></h3>"),
                            #textOutput("query"),
-                           leafletOutput(outputId = "eventMap1",height = 500)
+                           leafletOutput(outputId = "eventMap1",height = 600)
                            # Show data table
                            #br(),
                            
@@ -71,11 +71,12 @@ ui_topic<-fluidPage(
                            #DT::dataTableOutput(outputId = "relevantEvents"),
                            #br()
                   ),
-                  tabPanel(title="Table of Selected Events",
+                  tabPanel(title="Table of Selected Reports",
                            DT::dataTableOutput(outputId = "relevantEvents")
                            
                   ),
-                  tabPanel(title="Selected Events Analysis"
+                  tabPanel(title="Analytic of Selected Reports",
+                           source("ui_analytics.R", local = T, encoding = 'UTF-8')$value
                            
                   )
                 )

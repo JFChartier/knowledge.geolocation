@@ -51,23 +51,12 @@ ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "Knowledge G
 
 # Define server 
 server <- function(input, output, session) {
-  
-  if ("shiny" %in% installed.packages()==FALSE)
-  {
-    install.packages('shiny',dependencies = TRUE)
-  }
-  
   library(shiny)
-  
-  if ("leaflet" %in% installed.packages()==FALSE)
-  {
-    install.packages('leaflet',dependencies = TRUE)
-  }
-  
   library(leaflet)
   library(dplyr)
   library(magrittr)
   library(scales)
+  library(ggplot2)
   
   
   myColors = c("black","blue","red","green","brown","pink","orange", "yellow", "lightblue", "gray")
@@ -75,24 +64,13 @@ server <- function(input, output, session) {
   pal <- leaflet::colorFactor(palette = myColors,
                               levels = unique(all.data$CATEGORY))
   
-  
-  ########################################
-  #render event geolocation
-  
-  #query_select<-reactive({
-    #print(input$query)
-    #input$query
-    
-  #})
-  
   # Creating reactive Values:
   relevantSegments <- reactiveValues()
   #initialize as if all segment were perfectly similar to the query
   relevantSegments$relevance=rep(1, nrow(all.data))
   
   
-  #create eventReactive
-  #similarityWithQuery<-eventReactive(input$button, ignoreNULL=F, valueExpr = {
+  
   observeEvent(input$button, {
     #initialize as if all segment were perfectly similar to the query
     relevantSegments$relevance=rep(1, nrow(all.data))
@@ -117,8 +95,6 @@ server <- function(input, output, session) {
       relevantSegments$relevance=latentSimilarityWithQuery[1,]  
       
     }
-    
-    
      
   })
   
@@ -138,12 +114,7 @@ server <- function(input, output, session) {
     x
   })
   
-  ##test
-  #output$query <- renderText({
-    #str(input$query)
-    #input$query
-  #})
-  
+  ####### create map of selected reports #########################################################
   output$eventMap1 <- renderLeaflet(
     {
       map <- category_select1()%>%
@@ -168,18 +139,15 @@ server <- function(input, output, session) {
                 values = unique(category_select1()$CATEGORY))
       map
     })
+  ################################################################################################
   
-  # Create data table of relevant events
+  ###### Create data table of relevant reports ########################################################
   output$relevantEvents <- DT::renderDataTable(server = F, {
-    #idDoc=relevantSegments$similWithQuery>=relavanceMin()
-    #x=cbind(all.data[idDoc, c(2,4,5,8,9)], "relevance"=relevantSegments$similWithQuery[idDoc])
-    
     x=category_select1()[order(category_select1()$RELEVANCE, decreasing = T),c(2,4,5,8,10,11)]
     colnames(x)=toupper(colnames(x))
     
     x$RELEVANCE=round(x$RELEVANCE, 3)
     
-    #idDoc = order(relevantSegments$similWithQuery>=relavanceMin(), decreasing = T)
     DT::datatable(data = x, 
                   rownames = FALSE,
                   escape = F,
@@ -191,7 +159,87 @@ server <- function(input, output, session) {
                                  pageLength = 5)
     )
   })
+  ######################################################################################
   
+  output$organizationReports<- renderPlot(expr = {
+    ggplot(data = category_select1()$organization%>%as.data.frame(.)) +
+      geom_bar(mapping = aes(x = ., y = ..count.., group = 1), stat = "count") + 
+      #scale_y_continuous(labels = scales::percent_format())+
+      ylab("Count")+xlab("Organizations")
+    
+  })
+  
+  output$relevantReports<- renderPlot(expr = {
+    
+    ggplot(data=category_select1()$RELEVANCE%>%as.data.frame(.), aes(.)) + 
+      geom_histogram(breaks=seq(from = 0,to = 1, by = 0.1))+
+      xlab("Relevance score")+ylab("Count")+
+      scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, by=.2), labels=c("0 \n very low", 0.2, 0.4, 0.6, 0.8, "1 \n very high" ))
+    
+  })
+  
+  output$reportsByCategory<- renderPlot(expr = {
+    
+    dat=table(category_select1()$CATEGORY)%>%as.data.frame(., stringsAsFactors=F)
+    colnames(dat)=c("cat", "freq")
+    
+    ggplot(data = dat, aes(x = cat, y = freq)) +
+      geom_bar(stat = "identity") + 
+      #scale_y_continuous(labels = scales::percent_format())+
+      ylab("Count")+
+      xlab("Report category")+
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+      #geom_text(aes(y=..prop.., label = scales::percent(..prop..)), stat= "count", vjust = -.5, size = 3)
+    
+  })
+  
+  output$reportsByGranularity<- renderPlot(expr = {
+    
+    dat=table(category_select1()$GRANULARITY)%>%as.data.frame(., stringsAsFactors=F)
+    colnames(dat)=c("gran", "freq")
+    
+    ggplot(data = dat, aes(x = gran, y = freq)) +
+      geom_bar(stat = "identity") + 
+      #scale_y_continuous(labels = scales::percent_format())+
+      ylab("Count")+
+      xlab("Report granularity")+
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    #geom_text(aes(y=..prop.., label = scales::percent(..prop..)), stat= "count", vjust = -.5, size = 3)
+    
+  })
+  
+  ############ category and time #############################
+  output$categoryByTime <- renderPlot(expr = {
+    dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$CATEGORY)%>%set_colnames(c("date", "CATEGORY"))
+    dat=reshape2::dcast(dat, date~CATEGORY)
+    dat=reshape2::melt(dat,id=c("date"), variable.name="CATEGORY")
+    str(dat)
+    ggplot(data = dat, aes(x = date, y = value, colour=CATEGORY))+
+      geom_line(size=1)+
+      ylab("Count")+
+      xlab("Dates")+
+      scale_color_manual(values = pal(unique(dat$CATEGORY)))
+      #theme(legend.position = "right")
+    
+  })
+  
+  output$granularityByTime <- renderPlot(expr = {
+    dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$GRANULARITY)%>%set_colnames(c("date", "GRANULARITY"))
+    dat=reshape2::dcast(dat, date~GRANULARITY)
+    dat=reshape2::melt(dat,id=c("date"), variable.name="GRANULARITY")
+    str(dat)
+    ggplot(data = dat, aes(x = date, y = value, colour=GRANULARITY))+
+      geom_line(size=1)+
+      ylab("Count")+
+      xlab("Dates")+
+      #scale_color_manual(values = pal(unique(dat$category)))+
+      scale_color_brewer(palette = "Accent")
+    #theme(legend.position = "right")
+    
+  })
+  
+  
+    
   
 }
 #library(shinyShortcut)
