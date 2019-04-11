@@ -166,6 +166,7 @@ server <- function(input, output, session) {
       geom_bar(mapping = aes(x = ., y = ..count.., group = 1), stat = "count") + 
       #scale_y_continuous(labels = scales::percent_format())+
       ylab("Count")+xlab("Organizations")
+      #scale_fill_manual(values = c("sky blue", "grey30"))
     
   })
   
@@ -175,6 +176,18 @@ server <- function(input, output, session) {
       geom_histogram(breaks=seq(from = 0,to = 1, by = 0.1))+
       xlab("Relevance score")+ylab("Count")+
       scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, by=.2), labels=c("0 \n very low", 0.2, 0.4, 0.6, 0.8, "1 \n very high" ))
+    
+    #alternative stacked barplot
+    #dat=cbind(category_select1()$RELEVANCE%>%as.data.frame(.), category_select1()$organization)
+    #colnames(dat)=c("RELEVANCE", "ORGANIZATION")
+    
+    #ggplot(data=dat, aes(x = RELEVANCE, fill=ORGANIZATION)) + 
+      #geom_histogram(position="stack", breaks=seq(from = 0,to = 1, by = 0.1))+
+      #xlab("Relevance score")+ylab("Count")+
+      #scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, by=.2), labels=c("0 \n very low", 0.2, 0.4, 0.6, 0.8, "1 \n very high" ))+
+      #scale_fill_manual(values=c("sky blue", "grey30"))+
+      #theme(legend.position = "top")
+    
     
   })
   
@@ -213,13 +226,28 @@ server <- function(input, output, session) {
     dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$CATEGORY)%>%set_colnames(c("date", "CATEGORY"))
     dat=reshape2::dcast(dat, date~CATEGORY)
     dat=reshape2::melt(dat,id=c("date"), variable.name="CATEGORY")
-    str(dat)
+    #str(dat)
     ggplot(data = dat, aes(x = date, y = value, colour=CATEGORY))+
       geom_line(size=1)+
       ylab("Count")+
       xlab("Dates")+
-      scale_color_manual(values = pal(unique(dat$CATEGORY)))
-      #theme(legend.position = "right")
+      scale_color_manual(values = pal(unique(dat$CATEGORY)))+
+      theme(legend.position = "none")
+    
+  })
+  
+  output$categoryByTime2 <- renderPlot(expr = {
+    dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$CATEGORY)%>%set_colnames(c("date", "CATEGORY"))
+    dat=reshape2::dcast(dat, date~CATEGORY)
+    dat=reshape2::melt(dat,id=c("date"), variable.name="CATEGORY")
+    #str(dat)
+    ggplot(data = dat, aes(x = date, y = value, fill=CATEGORY))+
+      geom_bar(stat="identity", position="fill")+
+      ylab("Proportion")+
+      xlab("Dates")+
+      scale_y_continuous(labels = percent_format())+
+      scale_fill_manual(values = pal(unique(dat$CATEGORY)))
+    #theme(legend.position = "right")
     
   })
   
@@ -227,13 +255,27 @@ server <- function(input, output, session) {
     dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$GRANULARITY)%>%set_colnames(c("date", "GRANULARITY"))
     dat=reshape2::dcast(dat, date~GRANULARITY)
     dat=reshape2::melt(dat,id=c("date"), variable.name="GRANULARITY")
-    str(dat)
     ggplot(data = dat, aes(x = date, y = value, colour=GRANULARITY))+
       geom_line(size=1)+
       ylab("Count")+
       xlab("Dates")+
       #scale_color_manual(values = pal(unique(dat$category)))+
       scale_color_brewer(palette = "Accent")
+    #theme(legend.position = "right")
+    
+  })
+  
+  output$granularityByTime2 <- renderPlot(expr = {
+    dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$GRANULARITY)%>%set_colnames(c("date", "GRANULARITY"))
+    dat=reshape2::dcast(dat, date~GRANULARITY)
+    dat=reshape2::melt(dat,id=c("date"), variable.name="GRANULARITY")
+    
+    ggplot(data = dat, aes(x = date, y = value, fill=GRANULARITY))+
+      geom_bar(stat="identity", position="fill")+
+      ylab("Proportion")+
+      xlab("Dates")+
+      scale_y_continuous(labels = percent_format())+
+      scale_fill_brewer(palette = "Accent")
     #theme(legend.position = "right")
     
   })

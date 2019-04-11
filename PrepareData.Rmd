@@ -259,3 +259,21 @@ all.data$DESCRIPTION=new.description
 saveRDS(all.data, "all.unique.data.rds")
 ```
 
+#correct dates
+```{r}
+library(lubridate)
+library(magrittr)
+all.data=readRDS("all.unique.data.rds")
+
+dates=all.data$INCIDENT.DATE %>%as.Date(.)#lubridate::as_date(.)
+
+i.dates=year(dates)>2015
+
+year(dates[i.dates]) <-2015
+
+all.data$INCIDENT.DATE=dates
+saveRDS(all.data, "all.unique.data.rds")
+
+```
+
+

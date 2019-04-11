@@ -20,12 +20,23 @@ ui_analytics<-fluidPage(
   ),
   fluidRow(
     h5("Distribution of report categories in time"),
-    plotOutput(outputId = "categoryByTime")
+    #column(4,
+           #h5("Distribution of reports by category"),
+           #plotOutput(outputId = "categoryByTime")),
+    #column(8,
+           #h5("Distribution of reports by event granularity"),
+           #plotOutput(outputId = "categoryByTime2"))
+    
+    #h5("Distribution of report categories in time"),
+    #plotOutput(outputId = "categoryByTime"),
+    plotOutput(outputId = "categoryByTime2")
+    
   ),
   fluidRow(
     
      h5("Distribution of report granularities in time"),
-     plotOutput(outputId = "granularityByTime")
+     #plotOutput(outputId = "granularityByTime")
+     plotOutput(outputId = "granularityByTime2")
   )
   
 )
