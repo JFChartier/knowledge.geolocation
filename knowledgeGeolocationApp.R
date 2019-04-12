@@ -15,11 +15,13 @@ library(leaflet)
 #QM.data = readRDS("QM.data.rds")
 source("functionsForGeoKnowledgeApp.R", local = T)
 all.data=readRDS("all.unique.data.rds")
+#add i row for facilitating the subsetting
+all.data$i=seq(1:nrow(all.data))
+
 
 mySVD=readRDS("2Orgs_approxReducedMatrix-2019-04-03.rds")
 latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) %>% normRowVectors()
-
-
+doc.term.matrix=readRDS("2Orgs_sparseMatrix-2019-04-03.rds")
 
 
 ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "Knowledge Geo", title = "Dashboard Knowledge Geo: ",
@@ -80,7 +82,7 @@ server <- function(input, output, session) {
       #print(str(input$query))
       #similarityWithQuery1<-reactive({
       #cat("inside similarityWithQuery")
-      print("inside similarityWithQuery")
+      #print("inside similarityWithQuery")
       
       queryVector=buildQuery(queryTokens = input$query, mySVD = mySVD)
       
@@ -106,12 +108,10 @@ server <- function(input, output, session) {
     #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
     i=relevantSegments$relevance>=relavanceMin()
     print(paste0(sum(i), " number de relevant doc from ", length(relevantSegments$relevance)))
-    x=all.data[i,]
-    x$RELEVANCE=relevantSegments$relevance[i]
-    x=x %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
-    #initialize again all segments as perfectly similar to the query
-    #relevantSegments$relevance=rep(1, nrow(all.data))
-    x
+    sub.data=all.data[i,]
+    sub.data$RELEVANCE=relevantSegments$relevance[i]
+    sub.data=sub.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
+    sub.data
   })
   
   ####### create map of selected reports #########################################################
@@ -279,6 +279,71 @@ server <- function(input, output, session) {
     #theme(legend.position = "right")
     
   })
+  
+  ######## lexical specificities in time ##########################
+  # Create reactive data frame
+  specificities_organizations <- reactive({
+    
+    #calculer les specificites
+    specificites = quanteda::textstat_keyness(x=doc.term.matrix[category_select1()$i,], target=category_select1()$organization=="Quake Map", measure="chi2", sort=TRUE)
+    
+    #filter NA
+    specificites=specificites[is.na(specificites$chi2)==F,]
+    
+    #set p-value to 0.05, but could be 0.01 if we want to select only reliable specificities 
+    specificites=specificites[specificites$p<0.05,]
+    specificites
+  })
+  
+  
+  output$keynessplot <- renderPlot(
+    {
+      #set to 30 the number of displayed specificities, but could be change if it is too much
+      quanteda::textplot_keyness(x=specificities_organizations(), n=25, show_legend = T)+ #color = c("sky blue", "grey30")
+        #geom_col(position=position_dodge(0.5))+
+        theme(legend.position="top")+
+        scale_fill_manual(values=c("sky blue", "grey30"), 
+                          name="ORGANIZATIONS",
+                          labels=c("Quake Map", "Doctors without borders"))
+        #theme(legend.title = element_text("ORGANIZATIONS"))
+        
+      
+        
+        #coord_fixed(ylim=c(0,5000))
+      
+    })
+  
+  output$keynessplot2 <- renderPlot({
+    n=20
+    top.spec=top_n(x = specificities_organizations(), n=n, wt=chi2)
+    top.spec=top.spec[top.spec$chi2>0,]
+    top.spec$ORGANIZATION="Quake Map"
+    bottom.spec=top_n(x = specificities_organizations(), n=-n, wt=chi2)
+    bottom.spec=bottom.spec[bottom.spec$chi2<0,]
+    bottom.spec$ORGANIZATION="Doctors without\nborders"
+    
+    dat=rbind(top.spec,bottom.spec)
+    #dat$feature=paste(dat$feature, "\n")
+    ggplot(data = dat, aes(x = reorder(feature, chi2), y = chi2, fill=ORGANIZATION)) +
+      geom_bar(stat = "identity", width = .9, position = position_dodge(width = 2)) +
+      #geom_text(aes(label=feature,vjust=0.25, hjust=ifelse(chi2 >= 0, -0.25, 1.25)))+
+      #scale_y_continuous(labels = scales::percent_format())+
+      ylab("Specificity score (chi2)")+
+      xlab("Lexical Specificities")+
+      #theme(axis.text.x = element_text(angle = 90))+
+      coord_flip()+
+      scale_fill_manual(values = c("sky blue", "grey28"))
+      #ylim(c((min(dat$chi2)-300), (max(dat$chi2)+300)))
+      #scale_x_continuous(drop=FALSE) 
+    
+      #coord_cartesian(xlim=c(,23))
+    #geom_text(aes(label=feature), nudge_y = 1, vjust=0.25)
+    
+    
+  })
+      
+  
+  #####################################################################
   
   
     

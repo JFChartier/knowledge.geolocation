@@ -37,6 +37,12 @@ ui_analytics<-fluidPage(
      h5("Distribution of report granularities in time"),
      #plotOutput(outputId = "granularityByTime")
      plotOutput(outputId = "granularityByTime2")
+  ),
+  fluidRow(
+    
+    h5("Lexical specificities of organizations"),
+    #plotOutput(outputId = "keynessplot")
+    plotOutput(outputId = "keynessplot2")
   )
   
 )
