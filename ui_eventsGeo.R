@@ -9,6 +9,22 @@ ui_topic<-fluidPage(
                    # Text instructions
                    #HTML("Select topics"),
                    
+                   selectInput(inputId = "map",
+                               label="Map:",
+                               choices = c("OpenStreetMap", "CartoDB", "Stamen.TerrainBackground"),
+                               multiple = F,
+                               selected="CartoDB"),
+                   numericInput(inputId = "lalitude",
+                                label = "Latitude",
+                                value = mean(all.data$LATITUDE),
+                                min=min(all.data$LATITUDE),
+                                max=max(all.data$LATITUDE)),
+                   numericInput(inputId = "longitude",
+                                label = "longitude",
+                                value= mean(all.data$LONGITUDE),
+                                min=min(all.data$LONGITUDE),
+                                max=max(all.data$LONGITUDE)),
+                   
                    selectInput(inputId = "organization",
                                label = "Organization:",
                                choices = unique(all.data$organization),
@@ -62,13 +78,13 @@ ui_topic<-fluidPage(
                   tabPanel(title="Map of Selected Reports",
                            #HTML("<h4><b>Map of selected events</b></h3>"),
                            #textOutput("query"),
-                           leafletOutput(outputId = "eventMap1",height = 600)
+                           leafletOutput(outputId = "eventMap1",height = 500),
                            # Show data table
                            #br(),
                            
-                           #br(),
+                           br(),
                            #HTML("<h4><b>Table of seleted events</b></h3>"),
-                           #DT::dataTableOutput(outputId = "relevantEvents"),
+                           DT::dataTableOutput(outputId = "selectReport")
                            #br()
                   ),
                   tabPanel(title="Table of Selected Reports",

@@ -59,12 +59,16 @@ server <- function(input, output, session) {
   library(magrittr)
   library(scales)
   library(ggplot2)
+  library(mapview)
   
   
   myColors = c("black","blue","red","green","brown","pink","orange", "yellow", "lightblue", "gray")
   #myColors = topo.colors(10)
   pal <- leaflet::colorFactor(palette = myColors,
                               levels = unique(all.data$CATEGORY))
+  
+  palOrg<-leaflet::colorFactor(palette = c("lightgrey", "black"),
+                               levels = unique(all.data$organization))
   
   # Creating reactive Values:
   relevantSegments <- reactiveValues()
@@ -102,6 +106,20 @@ server <- function(input, output, session) {
   
   relavanceMin<-reactive({input$minima})
   
+  selecMap=reactive({input$map})
+  
+  center <- reactive({
+    current.center=input$eventMap1_center
+    current.center
+    #if(is.null(input$eventMap1_center)){
+      #return(c(179.462, -20.64275))
+    #}else{
+      #return(input$eventMap1_center)
+    #}
+    
+  })
+  
+  
   #category render
   category_select1<-reactive({
     #QM.data
@@ -117,28 +135,74 @@ server <- function(input, output, session) {
   ####### create map of selected reports #########################################################
   output$eventMap1 <- renderLeaflet(
     {
+      #print(paste("current center: ", center()))
       map <- category_select1()%>%
         leaflet(options = leafletOptions(
           # Set minZoom and dragging 
-          dragging = T)) %>%
-        addProviderTiles("CartoDB") %>%
-        # Use dc_hq to add the hq column as popups
-        addCircleMarkers(lng = ~jitter(LONGITUDE, amount = 0.0005), #jitter
+          dragging = T, zoomControl = T, minZoom = 6, maxZoom = 6)) %>%
+        #setView(lng = -73.98575, lat = 40.74856, zoom = 10) %>%
+        addProviderTiles(selecMap()) %>%
+       addCircleMarkers(lng = ~jitter(LONGITUDE, amount = 0.0005), #jitter
                          lat = ~jitter(LATITUDE, amount=0.0005), #jitter
                          popup = category_select1()$DESCRIPTION, 
-                         radius=~((normVector(category_select1()$RELEVANCE)+1)**6)*2, #(((RELEVANCE+1)**4)/2),
+                         radius=~((normVector(category_select1()$RELEVANCE)+1)**6)*5, #(((RELEVANCE+1)**4)/2),
                          color=~pal(category_select1()$CATEGORY),
                          label=~INCIDENT.TITLE,
                          fill=T,
-                         opacity = .8,
+                         opacity = 1,
+                         fillOpacity = .8,
+                         weight = 1,
+                         fillColor=~palOrg(category_select1()$organization),
                          #clusterOptions = markerClusterOptions(),
                          popupOptions=c(maxWidth = 400, minWidth = 50, maxHeight = 300,
                                       autoPan = TRUE, keepInView = F, closeButton = TRUE)) %>%
+        
         addLegend(position = "bottomright",
                 pal = pal,
-                values = unique(category_select1()$CATEGORY))
+                values = unique(category_select1()$CATEGORY),
+                title="Categories",
+                opacity = .8)%>%
+        addLegend(position = "bottomleft",
+                  pal = palOrg,
+                  values = unique(category_select1()$organization),
+                  title="Organizations", 
+                  opacity = .8)%>%
+        addMouseCoordinates(style = "basic")
+        #addLayersControl(overlayGroups = c("circles"))
       map
     })
+  
+  # create a reactive value that will store the click position
+  data_of_click <- reactiveValues(clickedMarker=NULL)
+  # store the click
+  observeEvent(input$map_marker_click,{
+    data_of_click$clickedMarker <- input$map_marker_click
+  })
+  
+  #https://www.r-graph-gallery.com/4-tricks-for-working-with-r-leaflet-and-shiny/
+  output$selectReport <- DT::renderDataTable(server = F, {
+    x=category_select1()[order(category_select1()$RELEVANCE, decreasing = T),c(2,4,5,8,9,10,11)]
+    colnames(x)=toupper(colnames(x))
+    
+    x$RELEVANCE=round(x$RELEVANCE, 3)
+    
+    my_place=data_of_click$clickedMarker$id
+    
+    print(my_place)
+    prin(data_of_click)
+    DT::datatable(data = x[which(x$ID==my_place),], 
+                  rownames = FALSE,
+                  escape = F#,
+                  #extensions="Buttons",
+                  #options = list(dom = 'Bfrtip',
+                                 #buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                                 #scrollY = 300,
+                                 #scroller = TRUE,
+                                 #pageLength = 5
+                                 #)
+    )
+  })
+  
   ################################################################################################
   
   ###### Create data table of relevant reports ########################################################
@@ -314,7 +378,7 @@ server <- function(input, output, session) {
     })
   
   output$keynessplot2 <- renderPlot({
-    n=20
+    n=30
     top.spec=top_n(x = specificities_organizations(), n=n, wt=chi2)
     top.spec=top.spec[top.spec$chi2>0,]
     top.spec$ORGANIZATION="Quake Map"
