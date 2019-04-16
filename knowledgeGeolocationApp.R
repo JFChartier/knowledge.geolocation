@@ -11,8 +11,7 @@ library(shiny)
 library(markdown)
 library(shinythemes)
 library(leaflet)
-############
-#QM.data = readRDS("QM.data.rds")
+
 source("functionsForGeoKnowledgeApp.R", local = T)
 all.data=readRDS("all.unique.data.rds")
 #add i row for facilitating the subsetting
@@ -24,7 +23,7 @@ latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) %>% normRow
 doc.term.matrix=readRDS("2Orgs_sparseMatrix-2019-04-03.rds")
 
 
-ui<-navbarPage(theme = shinytheme("paper"), inverse=F, windowTitle= "Knowledge Geo", title = "Dashboard Knowledge Geo: ",
+ui<-navbarPage(theme = shinytheme("journal"), inverse=F, windowTitle= "Knowledge Geo", title = "Dashboard Knowledge Geo: ",
                tabPanel("Event geolocations",
                         source("ui_eventsGeo.R", local = T, encoding = 'UTF-8')$value
                ),
@@ -67,7 +66,7 @@ server <- function(input, output, session) {
   pal <- leaflet::colorFactor(palette = myColors,
                               levels = unique(all.data$CATEGORY))
   
-  palOrg<-leaflet::colorFactor(palette = c("lightgrey", "black"),
+  palOrg<-leaflet::colorFactor(palette = c("black", "white"),
                                levels = unique(all.data$organization))
   
   # Creating reactive Values:
@@ -108,22 +107,16 @@ server <- function(input, output, session) {
   
   selecMap=reactive({input$map})
   
-  center <- reactive({
-    current.center=input$eventMap1_center
-    current.center
-    #if(is.null(input$eventMap1_center)){
-      #return(c(179.462, -20.64275))
-    #}else{
-      #return(input$eventMap1_center)
-    #}
-    
-  })
+  
+  zoom<-reactive({input$zoom})
+  
+  centerLat=reactive({input$lalitude})
+  
+  centerLon=reactive({input$longitude})
   
   
   #category render
   category_select1<-reactive({
-    #QM.data
-    #QM.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity)) #%>%select(c(1:3))
     i=relevantSegments$relevance>=relavanceMin()
     print(paste0(sum(i), " number de relevant doc from ", length(relevantSegments$relevance)))
     sub.data=all.data[i,]
@@ -139,8 +132,8 @@ server <- function(input, output, session) {
       map <- category_select1()%>%
         leaflet(options = leafletOptions(
           # Set minZoom and dragging 
-          dragging = T, zoomControl = T, minZoom = 6, maxZoom = 6)) %>%
-        #setView(lng = -73.98575, lat = 40.74856, zoom = 10) %>%
+          dragging = T, zoomControl = T, minZoom = zoom()[1], maxZoom = zoom()[2])) %>%
+        setView(lng = centerLon(), lat = centerLat(), zoom = zoom()[1]) %>%
         addProviderTiles(selecMap()) %>%
        addCircleMarkers(lng = ~jitter(LONGITUDE, amount = 0.0005), #jitter
                          lat = ~jitter(LATITUDE, amount=0.0005), #jitter
@@ -150,8 +143,8 @@ server <- function(input, output, session) {
                          label=~INCIDENT.TITLE,
                          fill=T,
                          opacity = 1,
-                         fillOpacity = .8,
-                         weight = 1,
+                         fillOpacity = 1,
+                         weight = 2,
                          fillColor=~palOrg(category_select1()$organization),
                          #clusterOptions = markerClusterOptions(),
                          popupOptions=c(maxWidth = 400, minWidth = 50, maxHeight = 300,
@@ -173,41 +166,42 @@ server <- function(input, output, session) {
     })
   
   # create a reactive value that will store the click position
-  data_of_click <- reactiveValues(clickedMarker=NULL)
+  # data_of_click <- reactiveValues(clickedMarker=NULL)
   # store the click
-  observeEvent(input$map_marker_click,{
-    data_of_click$clickedMarker <- input$map_marker_click
-  })
+  # observeEvent(input$map_marker_click,{
+  #   print(input$map_marker_click)
+  #   data_of_click$clickedMarker <- input$map_marker_click
+  # })
   
   #https://www.r-graph-gallery.com/4-tricks-for-working-with-r-leaflet-and-shiny/
-  output$selectReport <- DT::renderDataTable(server = F, {
-    x=category_select1()[order(category_select1()$RELEVANCE, decreasing = T),c(2,4,5,8,9,10,11)]
-    colnames(x)=toupper(colnames(x))
-    
-    x$RELEVANCE=round(x$RELEVANCE, 3)
-    
-    my_place=data_of_click$clickedMarker$id
-    
-    print(my_place)
-    prin(data_of_click)
-    DT::datatable(data = x[which(x$ID==my_place),], 
-                  rownames = FALSE,
-                  escape = F#,
-                  #extensions="Buttons",
-                  #options = list(dom = 'Bfrtip',
-                                 #buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-                                 #scrollY = 300,
-                                 #scroller = TRUE,
-                                 #pageLength = 5
-                                 #)
-    )
-  })
+  # output$selectReport <- DT::renderDataTable(server = F, {
+  #   x=category_select1()[order(category_select1()$RELEVANCE, decreasing = T),c(2,4,5,8,9,10,11)]
+  #   colnames(x)=toupper(colnames(x))
+  #   
+  #   #x$RELEVANCE=round(x$RELEVANCE, 3)
+  #   
+  #   my_place=data_of_click$clickedMarker$id
+  #   
+  #   print(my_place)
+  #   print(data_of_click)
+  #   DT::datatable(data = x[which(x$ID==my_place),], 
+  #                 rownames = FALSE,
+  #                 escape = F#,
+  #                 #extensions="Buttons",
+  #                 #options = list(dom = 'Bfrtip',
+  #                                #buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+  #                                # scrollY = 300,
+  #                                # scroller = TRUE,
+  #                                # pageLength = 5
+  #                                # )
+  #   )
+  # })
   
   ################################################################################################
   
   ###### Create data table of relevant reports ########################################################
   output$relevantEvents <- DT::renderDataTable(server = F, {
-    x=category_select1()[order(category_select1()$RELEVANCE, decreasing = T),c(2,4,5,8,10,11)]
+    x=category_select1()[order(category_select1()$RELEVANCE, decreasing = T),c(2,4,5,8,10,12)]
     colnames(x)=toupper(colnames(x))
     
     x$RELEVANCE=round(x$RELEVANCE, 3)
@@ -227,30 +221,31 @@ server <- function(input, output, session) {
   
   output$organizationReports<- renderPlot(expr = {
     ggplot(data = category_select1()$organization%>%as.data.frame(.)) +
-      geom_bar(mapping = aes(x = ., y = ..count.., group = 1), stat = "count") + 
+      geom_bar(mapping = aes(x = ., y = ..count.., group = 1), stat = "count", colour="black", fill=c("white", "grey30")) + 
       #scale_y_continuous(labels = scales::percent_format())+
-      ylab("Count")+xlab("Organizations")
-      #scale_fill_manual(values = c("sky blue", "grey30"))
+      ylab("Count")+
+      xlab("Organizations")+
+      scale_fill_manual(values = c("white", "grey30"))
     
   })
   
   output$relevantReports<- renderPlot(expr = {
     
-    ggplot(data=category_select1()$RELEVANCE%>%as.data.frame(.), aes(.)) + 
-      geom_histogram(breaks=seq(from = 0,to = 1, by = 0.1))+
-      xlab("Relevance score")+ylab("Count")+
-      scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, by=.2), labels=c("0 \n very low", 0.2, 0.4, 0.6, 0.8, "1 \n very high" ))
+    # ggplot(data=category_select1()$RELEVANCE%>%as.data.frame(.), aes(.)) + 
+    #   geom_histogram(breaks=seq(from = 0,to = 1, by = 0.1))+
+    #   xlab("Relevance score")+ylab("Count")+
+    #   scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, by=.2), labels=c("0 \n very low", 0.2, 0.4, 0.6, 0.8, "1 \n very high" ))
     
     #alternative stacked barplot
-    #dat=cbind(category_select1()$RELEVANCE%>%as.data.frame(.), category_select1()$organization)
-    #colnames(dat)=c("RELEVANCE", "ORGANIZATION")
+    dat=cbind(category_select1()$RELEVANCE%>%as.data.frame(.), category_select1()$organization)
+    colnames(dat)=c("RELEVANCE", "ORGANIZATION")
     
-    #ggplot(data=dat, aes(x = RELEVANCE, fill=ORGANIZATION)) + 
-      #geom_histogram(position="stack", breaks=seq(from = 0,to = 1, by = 0.1))+
-      #xlab("Relevance score")+ylab("Count")+
-      #scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, by=.2), labels=c("0 \n very low", 0.2, 0.4, 0.6, 0.8, "1 \n very high" ))+
-      #scale_fill_manual(values=c("sky blue", "grey30"))+
-      #theme(legend.position = "top")
+    ggplot(data=dat, aes(x = RELEVANCE, fill=ORGANIZATION)) + 
+      geom_histogram(position="stack", breaks=seq(from = 0,to = 1, by = 0.1), colour="black")+
+      xlab("Relevance score")+ylab("Count")+
+      scale_x_continuous(limits=c(0, 1), breaks=seq(0, 1, by=.2), labels=c("0 \n very low", 0.2, 0.4, 0.6, 0.8, "1 \n very high" ))+
+      scale_fill_manual(values=c("white", "grey30"))+
+      theme(legend.position = "right")
     
     
   })
@@ -261,11 +256,11 @@ server <- function(input, output, session) {
     colnames(dat)=c("cat", "freq")
     
     ggplot(data = dat, aes(x = cat, y = freq)) +
-      geom_bar(stat = "identity") + 
+      geom_bar(stat = "identity", colour="black") + 
       #scale_y_continuous(labels = scales::percent_format())+
       ylab("Count")+
       xlab("Report category")+
-      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
       #geom_text(aes(y=..prop.., label = scales::percent(..prop..)), stat= "count", vjust = -.5, size = 3)
     
   })
@@ -276,11 +271,11 @@ server <- function(input, output, session) {
     colnames(dat)=c("gran", "freq")
     
     ggplot(data = dat, aes(x = gran, y = freq)) +
-      geom_bar(stat = "identity") + 
+      geom_bar(stat = "identity", colour="black") + 
       #scale_y_continuous(labels = scales::percent_format())+
       ylab("Count")+
       xlab("Report granularity")+
-      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
     #geom_text(aes(y=..prop.., label = scales::percent(..prop..)), stat= "count", vjust = -.5, size = 3)
     
   })
@@ -315,19 +310,48 @@ server <- function(input, output, session) {
     
   })
   
-  output$granularityByTime <- renderPlot(expr = {
-    dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$GRANULARITY)%>%set_colnames(c("date", "GRANULARITY"))
-    dat=reshape2::dcast(dat, date~GRANULARITY)
-    dat=reshape2::melt(dat,id=c("date"), variable.name="GRANULARITY")
-    ggplot(data = dat, aes(x = date, y = value, colour=GRANULARITY))+
-      geom_line(size=1)+
+  output$reportsByTime <- renderPlot(expr = {
+    dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$organization)%>%set_colnames(c("date", "ORGANIZATION"))
+    dat=reshape2::dcast(dat, date~ORGANIZATION)
+    dat=reshape2::melt(dat,id=c("date"), variable.name="ORGANIZATION")
+    #str(dat)
+    ggplot(data = dat, aes(x = date, y = value, colour=ORGANIZATION))+
+      geom_line(size=2)+
       ylab("Count")+
       xlab("Dates")+
-      #scale_color_manual(values = pal(unique(dat$category)))+
-      scale_color_brewer(palette = "Accent")
-    #theme(legend.position = "right")
+      scale_color_manual(values=c("white", "grey30"))+
+      theme(legend.position = "right")
+      #scale_color_brewer(palette = "Accent")
     
   })
+  
+  # ouput$reportsByTime<-renderPlot(expr = {
+  #   dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$GRANULARITY)%>%set_colnames(c("date", "GRANULARITY"))
+  #   dat=reshape2::dcast(dat, date~GRANULARITY)
+  #   dat=reshape2::melt(dat,id=c("date"), variable.name="GRANULARITY")
+  #   ggplot(data = dat, aes(x = date, y = value, colour=GRANULARITY))+
+  #     geom_line(size=1)+
+  #     ylab("Count")+
+  #     xlab("Dates")+
+  #     #scale_color_manual(values = pal(unique(dat$category)))+
+  #     scale_color_brewer(palette = "Accent")
+  #   #theme(legend.position = "right")
+  #   
+  # })
+  
+  # output$granularityByTime <- renderPlot(expr = {
+  #   dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$GRANULARITY)%>%set_colnames(c("date", "GRANULARITY"))
+  #   dat=reshape2::dcast(dat, date~GRANULARITY)
+  #   dat=reshape2::melt(dat,id=c("date"), variable.name="GRANULARITY")
+  #   ggplot(data = dat, aes(x = date, y = value, colour=GRANULARITY))+
+  #     geom_line(size=1)+
+  #     ylab("Count")+
+  #     xlab("Dates")+
+  #     #scale_color_manual(values = pal(unique(dat$category)))+
+  #     scale_color_brewer(palette = "Accent")
+  #   #theme(legend.position = "right")
+  #   
+  # })
   
   output$granularityByTime2 <- renderPlot(expr = {
     dat=cbind(category_select1()$INCIDENT.DATE %>% as.Date(.)%>%as.data.frame(), category_select1()$GRANULARITY)%>%set_colnames(c("date", "GRANULARITY"))
@@ -360,22 +384,22 @@ server <- function(input, output, session) {
   })
   
   
-  output$keynessplot <- renderPlot(
-    {
-      #set to 30 the number of displayed specificities, but could be change if it is too much
-      quanteda::textplot_keyness(x=specificities_organizations(), n=25, show_legend = T)+ #color = c("sky blue", "grey30")
-        #geom_col(position=position_dodge(0.5))+
-        theme(legend.position="top")+
-        scale_fill_manual(values=c("sky blue", "grey30"), 
-                          name="ORGANIZATIONS",
-                          labels=c("Quake Map", "Doctors without borders"))
-        #theme(legend.title = element_text("ORGANIZATIONS"))
-        
-      
-        
-        #coord_fixed(ylim=c(0,5000))
-      
-    })
+  # output$keynessplot <- renderPlot(
+  #   {
+  #     #set to 30 the number of displayed specificities, but could be change if it is too much
+  #     quanteda::textplot_keyness(x=specificities_organizations(), n=25, show_legend = T)+ #color = c("sky blue", "grey30")
+  #       #geom_col(position=position_dodge(0.5))+
+  #       theme(legend.position="top")+
+  #       scale_fill_manual(values=c("sky blue", "grey30"), 
+  #                         name="ORGANIZATIONS",
+  #                         labels=c("Quake Map", "Doctors without borders"))
+  #       #theme(legend.title = element_text("ORGANIZATIONS"))
+  #       
+  #     
+  #       
+  #       #coord_fixed(ylim=c(0,5000))
+  #     
+  #   })
   
   output$keynessplot2 <- renderPlot({
     n=30
@@ -389,14 +413,14 @@ server <- function(input, output, session) {
     dat=rbind(top.spec,bottom.spec)
     #dat$feature=paste(dat$feature, "\n")
     ggplot(data = dat, aes(x = reorder(feature, chi2), y = chi2, fill=ORGANIZATION)) +
-      geom_bar(stat = "identity", width = .9, position = position_dodge(width = 2)) +
+      geom_bar(stat = "identity", width = .9, position = position_dodge(width = 2), colour="black") +
       #geom_text(aes(label=feature,vjust=0.25, hjust=ifelse(chi2 >= 0, -0.25, 1.25)))+
       #scale_y_continuous(labels = scales::percent_format())+
       ylab("Specificity score (chi2)")+
       xlab("Lexical Specificities")+
       #theme(axis.text.x = element_text(angle = 90))+
       coord_flip()+
-      scale_fill_manual(values = c("sky blue", "grey28"))
+      scale_fill_manual(values = c("white", "grey28"))
       #ylim(c((min(dat$chi2)-300), (max(dat$chi2)+300)))
       #scale_x_continuous(drop=FALSE) 
     

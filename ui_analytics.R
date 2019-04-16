@@ -6,17 +6,25 @@ ui_analytics<-fluidPage(
     column(6,
            h5("Relevance of reports for the query"),
            plotOutput(outputId = "relevantReports", height = "300px"))
-    
   ),
-  
   fluidRow(
     column(6,
            h5("Distribution of reports by category"),
            plotOutput(outputId = "reportsByCategory", height = "300px")),
     column(6,
-           h5("Distribution of reports by event granularity"),
-           plotOutput(outputId = "reportsByGranularity", height = "300px"))
+           h5("Distribution of reports in time"),
+           plotOutput(outputId = "reportsByTime", height = "300px"))
+
+  ),
+  fluidRow(
     
+    column(6,
+           h5("Distribution of reports by event granularity"),
+           plotOutput(outputId = "reportsByGranularity", height = "300px"))#,
+    # column(4,
+    #        h5("Distribution of reports by event granularity"),
+    #        plotOutput(outputId = "reportsByGranularity", height = "300px"))
+    # 
   ),
   fluidRow(
     h5("Distribution of report categories in time"),
