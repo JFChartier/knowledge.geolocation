@@ -23,8 +23,8 @@ latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) %>% normRow
 doc.term.matrix=readRDS("2Orgs_sparseMatrix-2019-04-03.rds")
 
 
-ui<-navbarPage(theme = shinytheme("journal"), inverse=F, windowTitle= "Knowledge Geo", title = "Dashboard Knowledge Geo: ",
-               tabPanel("Event geolocations",
+ui<-navbarPage(theme = shinytheme("journal"), inverse=F, windowTitle= "Knowledge Geo", title = "Knowledge Geo: ",
+               tabPanel("Dashboard",
                         source("ui_eventsGeo.R", local = T, encoding = 'UTF-8')$value
                ),
                
@@ -59,6 +59,7 @@ server <- function(input, output, session) {
   library(scales)
   library(ggplot2)
   library(mapview)
+  library(ggrepel)
   
   
   myColors = c("black","blue","red","green","brown","pink","orange", "yellow", "lightblue", "gray")
@@ -219,13 +220,56 @@ server <- function(input, output, session) {
   })
   ######################################################################################
   
+  output$propReports<-renderPlot(expr = {
+    n=nrow(all.data)
+    m=nrow(category_select1())
+    
+    dat=data.frame("Reports"=c("Remaining reports", "Selected reports"), Count=c(n-m, m))
+    dat$Percentage=c(dat$Count[1]/n*100, dat$Count[2]/dat$Count[1]*100)
+    
+    # ggplot(dat, aes(x="", y=Count, fill=Reports))+
+    #   geom_bar(width = 1, stat = "identity", colour="black")+
+    #   coord_polar("y", start=0)+
+    #   scale_fill_manual(values=c("white", "grey30"))
+    
+    ggplot(dat, aes(x=2, y=Count, fill=Reports))+
+      geom_bar(stat="identity", colour="black")+
+      coord_polar(theta = "y", start = 0)+
+      #geom_text(aes(y = Count, label = Reports), color = "black")+
+      xlim(0.5, 2.5)+
+      theme(axis.ticks=element_blank()) +
+      #theme(panel.grid=element_blank()) +
+      theme(axis.text=element_blank()) +
+      scale_fill_manual(values=c("white", "grey30"))+
+      xlab("")+ylab("")+
+      #geom_label_repel(colour="white", segment.colour="black")
+      #geom_label_repel(aes(label = paste(round(Percentage,2),"%")), colour=c("black", "white"), segment.colour="black", show.legend = F)+
+      geom_label_repel(aes(label = paste(Count,"reports")), colour=c("black", "white"), segment.colour="black", show.legend = F, size=5)
+    
+      
+  })
+  
+  
+  
   output$organizationReports<- renderPlot(expr = {
-    ggplot(data = category_select1()$organization%>%as.data.frame(.)) +
-      geom_bar(mapping = aes(x = ., y = ..count.., group = 1), stat = "count", colour="black", fill=c("white", "grey30")) + 
+    dat=category_select1()$organization%>%table()%>%as.data.frame()%>%set_colnames(c("ORGANIZATION", "COUNT"))
+    ggplot(data = dat, aes(x = ORGANIZATION, y = COUNT))+
+      geom_bar(aes(fill = ORGANIZATION), stat = "identity", colour="black") + 
       #scale_y_continuous(labels = scales::percent_format())+
       ylab("Count")+
-      xlab("Organizations")+
-      scale_fill_manual(values = c("white", "grey30"))
+      xlab("")+
+      theme(axis.text=element_blank())+
+      scale_fill_manual(values = c("white", "grey30"))+
+      theme(legend.position = "right")
+    
+    
+    # ggplot(data = category_select1()$organization%>%as.data.frame(.)) +
+    #   geom_bar(mapping = aes(x = ., y = ..count.., group = 1), stat = "count", colour="black", fill=c("white", "grey30")) + 
+    #   #scale_y_continuous(labels = scales::percent_format())+
+    #   ylab("Count")+
+    #   xlab("Organizations")+
+    #   scale_fill_manual(values = c("white", "grey30"))+
+    #   theme(legend.position = "right")
     
   })
   
@@ -420,7 +464,8 @@ server <- function(input, output, session) {
       xlab("Lexical Specificities")+
       #theme(axis.text.x = element_text(angle = 90))+
       coord_flip()+
-      scale_fill_manual(values = c("white", "grey28"))
+      scale_fill_manual(values = c("white", "grey28"))+
+      theme(axis.text = element_text(size = 15, colour = "black"))
       #ylim(c((min(dat$chi2)-300), (max(dat$chi2)+300)))
       #scale_x_continuous(drop=FALSE) 
     

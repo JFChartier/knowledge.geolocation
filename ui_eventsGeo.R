@@ -29,16 +29,16 @@ ui_topic<-fluidPage(
                                                   width="100%"),
                                       numericInput(inputId = "lalitude",
                                                    label = "Latitude",
-                                                   value = mean(all.data$LATITUDE, na.rm = T),
-                                                   min=min(all.data$LATITUDE, na.rm = T),
-                                                   max=max(all.data$LATITUDE, na.rm = T),
-                                                   step=.5),
+                                                   value = round(mean(all.data$LATITUDE, na.rm = T), digits = 2),
+                                                   min=round(min(all.data$LATITUDE, na.rm = T), digits = 2),
+                                                   max=round(max(all.data$LATITUDE, na.rm = T), digits = 2),
+                                                   step=.1),
                                       numericInput(inputId = "longitude",
                                                    label = "Longitude",
-                                                   value= mean(all.data$LONGITUDE, na.rm = T),
-                                                   min=min(all.data$LONGITUDE, na.rm = T),
-                                                   max=max(all.data$LONGITUDE, na.rm = T),
-                                                   step=.5)
+                                                   value= round(mean(all.data$LONGITUDE, na.rm = T), digits = 2),
+                                                   min=round(min(all.data$LONGITUDE, na.rm = T), digits = 2),
+                                                   max=round(max(all.data$LONGITUDE, na.rm = T), digits = 2),
+                                                   step=.1)
                                       
                      )
                    #   sliderInput(inputId = "zoom",
@@ -118,7 +118,7 @@ ui_topic<-fluidPage(
                   #tabPanel(title="Summary"
                   #),
                    
-                  tabPanel(title="Map of Selected Reports",
+                  tabPanel(title="Map",
                            #HTML("<h4><b>Map of selected events</b></h3>"),
                            #textOutput("query"),
                            leafletOutput(outputId = "eventMap1",height = 600)
@@ -131,11 +131,11 @@ ui_topic<-fluidPage(
                            #DT::dataTableOutput(outputId = "selectReport")
                            #br()
                   ),
-                  tabPanel(title="Table of Selected Reports",
+                  tabPanel(title="Table",
                            DT::dataTableOutput(outputId = "relevantEvents")
                            
                   ),
-                  tabPanel(title="Analytic of Selected Reports",
+                  tabPanel(title="Analytics",
                            source("ui_analytics.R", local = T, encoding = 'UTF-8')$value
                            
                   )

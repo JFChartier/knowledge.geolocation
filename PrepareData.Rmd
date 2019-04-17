@@ -276,4 +276,15 @@ saveRDS(all.data, "all.unique.data.rds")
 
 ```
 
+#correct category labels
+```{r}
+#library(magrittr)
+all.data=readRDS("all.unique.data.rds")
+#replace empty value by NA
+all.data$CATEGORY[all.data$CATEGORY==""]="UNKNOWN"
+saveRDS(all.data, "all.unique.data.rds")
+
+```
+
+
 
