@@ -122,7 +122,7 @@ server <- function(input, output, session) {
     print(paste0(sum(i), " number de relevant doc from ", length(relevantSegments$relevance)))
     sub.data=all.data[i,]
     sub.data$RELEVANCE=relevantSegments$relevance[i]
-    sub.data=sub.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
+    sub.data=sub.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE >=input$time[1] & INCIDENT.DATE <=input$time[2] & organization %in% input$organization))
     sub.data
   })
   
