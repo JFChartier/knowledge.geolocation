@@ -45,9 +45,24 @@ ui_analytics<-fluidPage(
   ),
   fluidRow(
     
-    h5("Lexical specificities of organizations from selected reports"),
+    h5("Strongest Lexical specificities of organizations from selected reports"),
     #plotOutput(outputId = "keynessplot")
     plotOutput(outputId = "keynessplot2", height = "700px")
+  ),
+  fluidRow(
+    
+    h5("Weakest Lexical specificities of organizations from selected reports"),
+    #plotOutput(outputId = "keynessplot")
+    plotOutput(outputId = "keynessplotNeg", height = "700px")
+  ),
+  fluidRow(
+    
+    column(6,
+           h5("Wordcould of selected reports for QuakeMap"),
+           plotOutput(outputId = "wordcoundQM", height = "500px")),
+    column(6,
+           h5("Wordcould of selected reports for Doctors without borders"),
+           plotOutput(outputId = "wordcouldDWB", height = "500px"))
   )
   
 )

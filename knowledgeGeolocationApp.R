@@ -421,13 +421,13 @@ server <- function(input, output, session) {
     
     #filter NA
     specificites=specificites[is.na(specificites$chi2)==F,]
-    
-    #set p-value to 0.05, but could be 0.01 if we want to select only reliable specificities 
-    specificites=specificites[specificites$p<0.05,]
+    #keep only word with prevalence larger than 5. Necessery for the chi2 since the statistic has erratic behavior for low frequency
+    specificites=specificites[(specificites$n_target+specificites$n_reference)>=5,]
     specificites
   })
   
-  
+  #show specificities with quanteda's plot function
+  #comes with bugs when we want to modify the legend
   # output$keynessplot <- renderPlot(
   #   {
   #     #set to 30 the number of displayed specificities, but could be change if it is too much
@@ -446,11 +446,14 @@ server <- function(input, output, session) {
   #   })
   
   output$keynessplot2 <- renderPlot({
+    #keep only significant specifities, where p-value < 0.05. Could be 0.01 too, if you feel less generous 
+    specificites=specificities_organizations()[specificities_organizations()$p<0.01,]
+    
     n=30
-    top.spec=top_n(x = specificities_organizations(), n=n, wt=chi2)
+    top.spec=dplyr::top_n(x = specificites, n=n, wt=chi2)
     top.spec=top.spec[top.spec$chi2>0,]
     top.spec$ORGANIZATION="Quake Map"
-    bottom.spec=top_n(x = specificities_organizations(), n=-n, wt=chi2)
+    bottom.spec=top_n(x = specificites, n=-n, wt=chi2)
     bottom.spec=bottom.spec[bottom.spec$chi2<0,]
     bottom.spec$ORGANIZATION="Doctors without\nborders"
     
@@ -472,6 +475,92 @@ server <- function(input, output, session) {
       #coord_cartesian(xlim=c(,23))
     #geom_text(aes(label=feature), nudge_y = 1, vjust=0.25)
     
+    
+  })
+  
+  
+  output$keynessplotNeg <- renderPlot({
+    #View(specificities_organizations())  
+    #keeping only non-significant specifities, where p-value > 0.05. Could be 0.01 too if fell more generous 
+    specificites=specificities_organizations()[specificities_organizations()$p<0.01,]
+    
+    #View(specificites, title = "significant specif") 
+    top.spec=specificites[specificites$chi2>=0,]
+    
+    #=-30
+    
+    top.spec=dplyr::top_n(x = top.spec, n=-30, wt=chi2)
+    top.spec$ORGANIZATION="Quake Map"
+    
+    bottom.spec=specificites[specificites$chi2<=0,]
+    bottom.spec=top_n(x = bottom.spec, n=30, wt=chi2)
+    #bottom.spec=bottom.spec[order(bottom.spec$chi2, decreasing = T),]
+    bottom.spec$ORGANIZATION="Doctors without\nborders"
+    
+    dat=rbind(top.spec,bottom.spec)
+    #dat$feature=paste(dat$feature, "\n")
+    ggplot(data = dat, aes(x = reorder(feature, chi2), y = chi2, fill=ORGANIZATION)) +
+      geom_bar(stat = "identity", width = .9, position = position_dodge(width = 2), colour="black") +
+      #geom_text(aes(label=feature,vjust=0.25, hjust=ifelse(chi2 >= 0, -0.25, 1.25)))+
+      #scale_y_continuous(labels = scales::percent_format())+
+      ylab("Specificity score (chi2)")+
+      xlab("Lexical Specificities")+
+      #theme(axis.text.x = element_text(angle = 90))+
+      coord_flip()+
+      scale_fill_manual(values = c("white", "grey28"))+
+      theme(axis.text = element_text(size = 15, colour = "black"))
+    #ylim(c((min(dat$chi2)-300), (max(dat$chi2)+300)))
+    #scale_x_continuous(drop=FALSE) 
+    
+    #coord_cartesian(xlim=c(,23))
+    #geom_text(aes(label=feature), nudge_y = 1, vjust=0.25)
+    
+    
+  })
+  
+  commonWordsInClounds <- reactive({
+    
+    dat=category_select1()[category_select1()$organization=="Quake Map",]
+    dat=doc.term.matrix[dat$i,]
+    topWordsQM=quanteda::topfeatures(dat,n=50, decreasing=T)
+    
+    dat=category_select1()[category_select1()$organization=="Doctors Without Borders",]
+    dat=doc.term.matrix[dat$i,]
+    topWordsDWB=quanteda::topfeatures(dat,n=50, decreasing=T)
+    
+    common=intersect(names(topWordsQM), names(topWordsDWB))
+    print(common)
+    common
+  })
+  
+  
+  output$wordcoundQM <- renderPlot({
+    dat=category_select1()[category_select1()$organization=="Quake Map",]
+    dat=doc.term.matrix[dat$i,]
+    topWords=quanteda::topfeatures(dat,n=50, decreasing=T)
+    dat=quanteda::dfm_select(dat,selection="keep", pattern=names(topWords), valuetype="fixed", case_insensitive=T)
+    
+    myCols=rep("black", quanteda::featnames(dat)%>%length(.))
+    match_value<-match(commonWordsInClounds(), quanteda::featnames(dat))
+    print(quanteda::featnames(dat)[match_value])
+    myCols[match_value]="darkred"
+    quanteda::textplot_wordcloud(x = dat, min_count=1, color=myCols)
+    
+  })
+  
+  output$wordcouldDWB <- renderPlot({
+    dat=category_select1()[category_select1()$organization=="Doctors Without Borders",]
+    dat=doc.term.matrix[dat$i,]
+    topWords=quanteda::topfeatures(dat,n=50, decreasing=T)
+    #dat=quanteda::dfm_select(dat,selection="keep", pattern=names(topWords), valuetype="fixed", case_insensitive=T)
+    
+    myCols=rep("black", topWords%>%length(.))
+    match_value<-match(commonWordsInClounds(), names(topWords))
+    print(topWords[match_value])
+    myCols[match_value]="darkred"
+    #quanteda::textplot_wordcloud(x = dat, min_count=1, color=myCols)
+    #wordcloud2::wordcloud2Output(as.data.frame(dat), color=myCols)
+    wordcloud::wordcloud(words = names(topWords), freq = topWords, color=myCols)
     
   })
       
