@@ -22,6 +22,8 @@ mySVD=readRDS("2Orgs_approxReducedMatrix-2019-04-03.rds")
 latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) %>% normRowVectors()
 doc.term.matrix=readRDS("2Orgs_sparseMatrix-2019-04-03.rds")
 
+simil.bet.org=readRDS("simil.bet.org.of.same.category.rds")
+
 
 ui<-navbarPage(theme = shinytheme("journal"), inverse=F, windowTitle= "Knowledge Geo", title = "Knowledge Geo: ",
                tabPanel("Dashboard",
@@ -122,7 +124,10 @@ server <- function(input, output, session) {
     print(paste0(sum(i), " number de relevant doc from ", length(relevantSegments$relevance)))
     sub.data=all.data[i,]
     sub.data$RELEVANCE=relevantSegments$relevance[i]
-    sub.data=sub.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE >=input$time[1] & INCIDENT.DATE <=input$time[2] & organization %in% input$organization))
+    sub.data=sub.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE <=input$time & organization %in% input$organization))
+    #use this next line if the time slider has 2 thresholds
+    #sub.data=sub.data %>% filter((CATEGORY %in% input$category & GRANULARITY %in% input$granularity & INCIDENT.DATE >=input$time[1] & INCIDENT.DATE <=input$time[2] & organization %in% input$organization))
+    
     sub.data
   })
   
@@ -258,7 +263,7 @@ server <- function(input, output, session) {
       #scale_y_continuous(labels = scales::percent_format())+
       ylab("Count")+
       xlab("")+
-      theme(axis.text=element_blank())+
+      #theme(axis.text=element_blank())+
       scale_fill_manual(values = c("white", "grey30"))+
       theme(legend.position = "right")
     
@@ -296,32 +301,60 @@ server <- function(input, output, session) {
   
   output$reportsByCategory<- renderPlot(expr = {
     
-    dat=table(category_select1()$CATEGORY)%>%as.data.frame(., stringsAsFactors=F)
-    colnames(dat)=c("cat", "freq")
+    dat=category_select1()[,c("CATEGORY", "organization")]
+    dat=reshape2::dcast(dat, CATEGORY~organization)
+    dat=reshape2::melt(dat,id.vars=c("CATEGORY"), variable.name="Organization", value.name="Count")
     
-    ggplot(data = dat, aes(x = cat, y = freq)) +
+    ggplot(data = dat, aes(x = CATEGORY, y = Count, fill=Organization)) +
       geom_bar(stat = "identity", colour="black") + 
       #scale_y_continuous(labels = scales::percent_format())+
       ylab("Count")+
       xlab("Report category")+
+      scale_fill_manual(values=c("white", "grey30"))+
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
-      #geom_text(aes(y=..prop.., label = scales::percent(..prop..)), stat= "count", vjust = -.5, size = 3)
+    
+    
+    #old format
+    #dat=table(category_select1()$CATEGORY)%>%as.data.frame(., stringsAsFactors=F)
+    #colnames(dat)=c("cat", "freq")
+    
+    
+    # ggplot(data = dat, aes(x = cat, y = freq)) +
+    #   geom_bar(stat = "identity", colour="black") + 
+    #   #scale_y_continuous(labels = scales::percent_format())+
+    #   ylab("Count")+
+    #   xlab("Report category")+
+    #   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    #   #geom_text(aes(y=..prop.., label = scales::percent(..prop..)), stat= "count", vjust = -.5, size = 3)
     
   })
   
   output$reportsByGranularity<- renderPlot(expr = {
+    dat=category_select1()[,c("GRANULARITY", "organization")]
+    dat=reshape2::dcast(dat, GRANULARITY~organization)
+    dat=reshape2::melt(dat,id.vars=c("GRANULARITY"), variable.name="Organization", value.name="Count")
     
-    dat=table(category_select1()$GRANULARITY)%>%as.data.frame(., stringsAsFactors=F)
-    colnames(dat)=c("gran", "freq")
-    
-    ggplot(data = dat, aes(x = gran, y = freq)) +
+    ggplot(data = dat, aes(x = GRANULARITY, y = Count, fill=Organization)) +
       geom_bar(stat = "identity", colour="black") + 
       #scale_y_continuous(labels = scales::percent_format())+
       ylab("Count")+
       xlab("Report granularity")+
+      scale_fill_manual(values=c("white", "grey30"))+
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    #geom_text(aes(y=..prop.., label = scales::percent(..prop..)), stat= "count", vjust = -.5, size = 3)
     
+    #old format
+    
+    # dat=table(category_select1()$GRANULARITY)%>%as.data.frame(., stringsAsFactors=F)
+    # colnames(dat)=c("gran", "freq")
+    # 
+    # ggplot(data = dat, aes(x = gran, y = freq)) +
+    #   geom_bar(stat = "identity", colour="black") + 
+    #   #scale_y_continuous(labels = scales::percent_format())+
+    #   ylab("Count")+
+    #   xlab("Report granularity")+
+    #   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    # #geom_text(aes(y=..prop.., label = scales::percent(..prop..)), stat= "count", vjust = -.5, size = 3)
+    # 
   })
   
   ############ category and time #############################
@@ -529,7 +562,7 @@ server <- function(input, output, session) {
     topWordsDWB=quanteda::topfeatures(dat,n=50, decreasing=T)
     
     common=intersect(names(topWordsQM), names(topWordsDWB))
-    print(common)
+    #print(common)
     common
   })
   
@@ -538,13 +571,17 @@ server <- function(input, output, session) {
     dat=category_select1()[category_select1()$organization=="Quake Map",]
     dat=doc.term.matrix[dat$i,]
     topWords=quanteda::topfeatures(dat,n=50, decreasing=T)
-    dat=quanteda::dfm_select(dat,selection="keep", pattern=names(topWords), valuetype="fixed", case_insensitive=T)
+    #dat=quanteda::dfm_select(dat,selection="keep", pattern=names(topWords), valuetype="fixed", case_insensitive=T)
     
-    myCols=rep("black", quanteda::featnames(dat)%>%length(.))
-    match_value<-match(commonWordsInClounds(), quanteda::featnames(dat))
-    print(quanteda::featnames(dat)[match_value])
+    myCols=rep("black", length(topWords))
+    #match_value<-match(commonWordsInClounds(), quanteda::featnames(dat))
+    match_value<-match(commonWordsInClounds(), names(topWords))
+    #print(quanteda::featnames(dat)[match_value])
+    #print(topWords[match_value])
     myCols[match_value]="darkred"
-    quanteda::textplot_wordcloud(x = dat, min_count=1, color=myCols)
+    #View(cbind(topWords,myCols), "QM")
+    #quanteda::textplot_wordcloud(x = dat, min_count=1, color=myCols)
+    wordcloud::wordcloud(words = names(topWords), freq = topWords, color=myCols, ordered.colors=T, use.r.layout = T, scale=c(3,1))
     
   })
   
@@ -552,16 +589,33 @@ server <- function(input, output, session) {
     dat=category_select1()[category_select1()$organization=="Doctors Without Borders",]
     dat=doc.term.matrix[dat$i,]
     topWords=quanteda::topfeatures(dat,n=50, decreasing=T)
-    #dat=quanteda::dfm_select(dat,selection="keep", pattern=names(topWords), valuetype="fixed", case_insensitive=T)
     
-    myCols=rep("black", topWords%>%length(.))
+    dat=data.frame(myCols=rep("black", length(topWords)), freq=topWords, word=names(topWords), stringsAsFactors = F)
     match_value<-match(commonWordsInClounds(), names(topWords))
-    print(topWords[match_value])
-    myCols[match_value]="darkred"
-    #quanteda::textplot_wordcloud(x = dat, min_count=1, color=myCols)
+    dat$myCols[match_value]="darkred"
     #wordcloud2::wordcloud2Output(as.data.frame(dat), color=myCols)
-    wordcloud::wordcloud(words = names(topWords), freq = topWords, color=myCols)
+    wordcloud::wordcloud(words = dat$word, freq = dat$freq, color=dat$myCols, ordered.colors=T, use.r.layout=T, scale=c(3,1))
     
+  })
+  
+  output$similOrg<-renderPlot({
+    i= (simil.bet.org$id.doctors %in% category_select1()$i) & (simil.bet.org$id.QM %in% category_select1()$i)
+    #str(i)
+    #print(sum(i))
+    dat=simil.bet.org[i,]
+    ggplot(dat, aes(x=cat.doc, y=simil,  fill=cat.doc)) + geom_boxplot()+ 
+      #facet_grid(.~cat.doc)+
+      stat_summary(fun.y=mean, geom="point", shape=4, size=2)+
+      labs(subtitle="x indicates the average similariy.\nOnly categories with reports from both organizations are shown")+scale_y_continuous("Similarity score (cosine)")+
+      scale_x_discrete("")+
+      theme(axis.text = element_text(size = 10, colour = "black"))+
+      scale_fill_manual("CATEGORY", values = pal(unique(dat$cat.doc)))
+    
+    #alternative plot with histograms instead
+    # ggplot(dat, aes(x=simil)) + geom_histogram(aes(y = ..ncount.., colour=cat.doc, fill=cat.doc),alpha=0.5,position="identity")+
+    #   facet_grid(.~cat.doc)+
+    #   labs(title = "", y="")+ labs(fill='Agreement')+ labs(color='Agreement')
+
   })
       
   

@@ -195,5 +195,56 @@ saveRDS(mySVD, file = "2Orgs_approxReducedMatrix-2019-04-03.rds")
 
 ```
 
+#Compute similarity between description.text
+```{r}
+source("functionsForGeoKnowledgeApp.R", local = T)
+library(magrittr)
+mySVD=readRDS("2Orgs_approxReducedMatrix-2019-04-03.rds")
+latentNormedDocSpace = as.matrix(mySVD$u %*% solve(diag((mySVD$d)))) 
+latentNormedDocSpace=normRowVectors(latentNormedDocSpace)
+#read all data
+all.data=readRDS("all.unique.data.rds")
+#add i row for facilitating the subsetting
+i=seq(1:nrow(all.data))
+vec.Doctors=latentNormedDocSpace[all.data$organization=="Doctors Without Borders",]
+i.doctors=i[all.data$organization=="Doctors Without Borders"]
+vec.QM=latentNormedDocSpace[all.data$organization=="Quake Map",]
+i.qm=i[all.data$organization=="Quake Map"]
+
+
+
+
+simil.bet.org=proxy::simil(vec.Doctors, vec.QM, method = "cosine", by_rows = TRUE)
+#stupid function to encode as.matrix
+simil.bet.org=rbind(simil.bet.org[1:10,], simil.bet.org[11:nrow(simil.bet.org),])%>%as.data.frame(.)
+colnames(simil.bet.org)=i.qm
+
+simil.bet.org$id.doctors=i.doctors
+
+simil.bet.org.melted=reshape2::melt(simil.bet.org, id = c("id.doctors"), variable.name= "id.QM",  value.name = "simil")
+
+#retreive cat of segment from DWF
+cat.of.seg=sapply(simil.bet.org.melted$id.doctors, function(x){
+  all.data$CATEGORY[x]
+})
+simil.bet.org.melted$cat.doc=cat.of.seg
+
+#retreive cat of segment from QM
+cat.of.seg=sapply(simil.bet.org.melted$id.QM, function(x){
+  all.data$CATEGORY[x]
+})
+simil.bet.org.melted$cat.qm=cat.of.seg
+
+#keep only row where cat are the same
+is.same=apply(simil.bet.org.melted,MARGIN = 1,function(x){
+  x[4]==x[5]
+})
+simil.bet.org.melted=simil.bet.org.melted[is.same,]
+
+#drop unnecessary redundant feature 
+simil.bet.org.melted$cat.qm=NULL
+
+saveRDS(simil.bet.org.melted, "simil.bet.org.of.same.category.rds")
+```
 
 

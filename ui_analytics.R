@@ -57,6 +57,12 @@ ui_analytics<-fluidPage(
   ),
   fluidRow(
     
+    h5("Similarities between selected reports by categories and organizations"),
+    #plotOutput(outputId = "keynessplot")
+    plotOutput(outputId = "similOrg", height = "400px")
+  ),
+  fluidRow(
+    
     column(6,
            h5("Wordcould of selected reports for QuakeMap"),
            plotOutput(outputId = "wordcoundQM", height = "500px")),

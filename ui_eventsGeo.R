@@ -84,8 +84,9 @@ ui_topic<-fluidPage(
                                  label = "Time slider:",
                                  min=min(as.Date(all.data$INCIDENT.DATE)),
                                  max=max(as.Date(all.data$INCIDENT.DATE)),
-                                 #value = max(as.Date(all.data$INCIDENT.DATE)),
-                                 value = c(min(as.Date(all.data$INCIDENT.DATE)), max(as.Date(all.data$INCIDENT.DATE))),
+                                 value = max(as.Date(all.data$INCIDENT.DATE)),
+                                 #the next line is an alternative time slider with 2 thresholds
+                                 #value = c(min(as.Date(all.data$INCIDENT.DATE)), max(as.Date(all.data$INCIDENT.DATE))),
                                  step = 1,
                                  animate=TRUE,
                                  width="100%")
